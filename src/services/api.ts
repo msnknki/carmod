@@ -1,6 +1,11 @@
 const API_BASE = 'http://10.0.2.2:3000/api'; // Android emulator → localhost
 
+const GUEST_EMAIL = 'guest@carmodapp.local';
+const GUEST_PASSWORD = 'guestpass123';
+const GUEST_NAME = 'Guest';
+
 let authToken: string | null = null;
+let refreshing = false;
 
 export const setAuthToken = (token: string) => {
   authToken = token;
@@ -18,7 +23,27 @@ const getHeaders = () => {
   return headers;
 };
 
-async function request(url: string, options: RequestInit) {
+async function refreshGuestToken(): Promise<void> {
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: GUEST_EMAIL, password: GUEST_PASSWORD}),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      authToken = data.token;
+    }
+  } catch {
+    // backend unreachable — leave token as-is
+  } finally {
+    refreshing = false;
+  }
+}
+
+async function request(url: string, options: RequestInit, retry = true): Promise<any> {
   let res: Response;
   try {
     res = await fetch(url, options);
@@ -26,6 +51,15 @@ async function request(url: string, options: RequestInit) {
     throw new Error(
       'Network error — check your connection and make sure the backend is running',
     );
+  }
+
+  if (res.status === 401 && retry) {
+    await refreshGuestToken();
+    const retryOptions = {
+      ...options,
+      headers: getHeaders(),
+    };
+    return request(url, retryOptions, false);
   }
 
   let data: any;

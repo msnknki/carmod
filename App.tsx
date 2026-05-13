@@ -41,7 +41,7 @@ async function ensureGuestSession() {
       });
       setAuthToken(res.token);
     } catch {
-      // backend unavailable — app still opens, AI features will show error
+      // backend unavailable — api.ts will auto-refresh on the first actual request
     }
   }
 }

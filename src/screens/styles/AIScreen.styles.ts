@@ -22,6 +22,47 @@ export default StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  // Country selector
+  locationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 4,
+  },
+  locationLabel: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  locationChips: {
+    flexDirection: 'row',
+    gap: 4,
+    flexWrap: 'nowrap',
+  },
+  locationChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  locationChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  locationChipText: {
+    fontSize: 10,
+    color: colors.textSecondary,
+  },
+  locationChipTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Messages
   emptyState: {
     position: 'absolute',
     top: '30%',
@@ -54,7 +95,7 @@ export default StyleSheet.create({
   bubble: {
     borderRadius: 12,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: 4,
     maxWidth: '85%',
   },
   userBubble: {
@@ -68,7 +109,7 @@ export default StyleSheet.create({
   roleLabel: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
     fontWeight: '600',
   },
   messageText: {
@@ -76,6 +117,167 @@ export default StyleSheet.create({
     fontSize: fontSize.md,
     lineHeight: 22,
   },
+  // Parts cards
+  partsSection: {
+    alignSelf: 'stretch',
+    marginBottom: spacing.sm,
+  },
+  partsSectionTitle: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: 4,
+    marginLeft: 2,
+  },
+  partsScroll: {
+    flexDirection: 'row',
+  },
+  partCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginRight: spacing.sm,
+    width: 160,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  partCardSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.surfaceLight,
+  },
+  partImage: {
+    width: '100%',
+    height: 100,
+    backgroundColor: colors.surfaceLight,
+  },
+  partImagePlaceholder: {
+    width: '100%',
+    height: 100,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partImagePlaceholderText: {
+    fontSize: 36,
+  },
+  partSource: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    marginHorizontal: spacing.sm,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  partName: {
+    fontSize: fontSize.sm,
+    color: colors.text,
+    fontWeight: '600',
+    marginHorizontal: spacing.sm,
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  partPrice: {
+    fontSize: fontSize.md,
+    color: colors.accent,
+    fontWeight: 'bold',
+    marginHorizontal: spacing.sm,
+    marginBottom: 4,
+  },
+  partCondition: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.sm,
+  },
+  partViewBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 7,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  partViewBtnText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Part detail modal
+  detailOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  detailPanel: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  detailImage: {
+    width: '100%',
+    height: 220,
+    backgroundColor: colors.surfaceLight,
+  },
+  detailImagePlaceholder: {
+    width: '100%',
+    height: 220,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailImagePlaceholderText: {
+    fontSize: 64,
+  },
+  detailBody: {
+    padding: spacing.md,
+  },
+  detailSourceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  detailSource: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailCondition: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  detailName: {
+    fontSize: fontSize.xl,
+    color: colors.text,
+    fontWeight: 'bold',
+    marginBottom: spacing.sm,
+  },
+  detailPrice: {
+    fontSize: 28,
+    color: colors.accent,
+    fontWeight: 'bold',
+    marginBottom: spacing.md,
+  },
+  detailBuyBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  detailBuyBtnText: {
+    color: '#fff',
+    fontSize: fontSize.md,
+    fontWeight: '700',
+  },
+  detailCloseBtn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  detailCloseBtnText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.md,
+  },
+  // Loading / input
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',

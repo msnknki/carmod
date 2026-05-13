@@ -1,4 +1,4 @@
-﻿import React, {useState} from 'react';
+﻿import React, {useState, useRef} from 'react';
 import {
   Text,
   View,
@@ -9,6 +9,9 @@ import {
   Linking,
   Image,
   ScrollView,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {colors} from '../theme';
@@ -35,6 +38,32 @@ type ShopResult = {
   isOpen: boolean | null;
   source: string;
 };
+
+type AIPart = {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  condition: string;
+  source: string;
+  purchaseUrl: string;
+  imageUrl?: string;
+};
+
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'ai';
+  content: string;
+  parts?: AIPart[];
+};
+
+const COUNTRIES = [
+  {code: 'LB', label: '🇱🇧 LB'},
+  {code: 'AE', label: '🇦🇪 UAE'},
+  {code: 'US', label: '🇺🇸 US'},
+  {code: 'GB', label: '🇬🇧 UK'},
+  {code: 'DE', label: '🇩🇪 DE'},
+];
 
 type Tab = 'parts' | 'shops' | 'preview';
 
@@ -66,6 +95,16 @@ const CustomizationScreen = () => {
   const [estimateLoading, setEstimateLoading] = useState(false);
   const [estimate, setEstimate] = useState<any>(null);
   const [estimateError, setEstimateError] = useState('');
+
+  // AI chat state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [detailPart, setDetailPart] = useState<AIPart | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatConversationId, setChatConversationId] = useState<number | null>(null);
+  const [country, setCountry] = useState('LB');
+  const chatListRef = useRef<FlatList>(null);
 
   const searchParts = async () => {
     if (!query.trim()) {
@@ -198,6 +237,71 @@ const CustomizationScreen = () => {
     });
   };
 
+  const addPartFromAI = (aiPart: AIPart) => {
+    const mapped: PartResult = {
+      id: aiPart.id,
+      title: aiPart.name,
+      price: aiPart.price,
+      currency: aiPart.currency,
+      url: aiPart.purchaseUrl,
+      condition: aiPart.condition,
+      source: aiPart.source,
+    };
+    setParts(prev => {
+      if (prev.find(p => p.id === mapped.id)) return prev;
+      return [mapped, ...prev];
+    });
+    setSelectedParts(prev => new Set([...prev, mapped.id]));
+    setChatOpen(false);
+    setActiveTab('parts');
+  };
+
+  const sendChatMessage = async () => {
+    const text = chatInput.trim();
+    if (!text || chatLoading) return;
+
+    const userMsg: ChatMessage = {id: Date.now().toString(), role: 'user', content: text};
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+
+    try {
+      const selectedPartNames = parts
+        .filter(p => selectedParts.has(p.id))
+        .map(p => p.title);
+
+      const contextNote = selectedPartNames.length > 0
+        ? ` (User already has these parts selected: ${selectedPartNames.join(', ')})`
+        : '';
+
+      const res = await api.post('/chat', {
+        message: text + contextNote,
+        conversationId: chatConversationId,
+        carId: selectedCar?.id,
+        countryCode: country,
+      });
+
+      if (res.conversationId && !chatConversationId) {
+        setChatConversationId(res.conversationId);
+      }
+
+      const aiMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        content: res.response,
+        parts: res.parts?.length > 0 ? res.parts : undefined,
+      };
+      setChatMessages(prev => [...prev, aiMsg]);
+    } catch (err: any) {
+      setChatMessages(prev => [
+        ...prev,
+        {id: (Date.now() + 1).toString(), role: 'ai', content: `Error: ${err.message}`},
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const totalCost = parts
     .filter(p => selectedParts.has(p.id))
     .reduce((sum, p) => sum + p.price, 0);
@@ -234,9 +338,9 @@ const CustomizationScreen = () => {
           {selected && <Text style={styles.checkmark}>✓</Text>}
         </View>
         <TouchableOpacity
-          onPress={() => item.url && Linking.openURL(item.url)}
+          onPress={() => setDetailPart({id: item.id, name: item.title, price: item.price, currency: item.currency, condition: item.condition, source: item.source, purchaseUrl: item.url, imageUrl: undefined})}
           style={styles.linkBtn}>
-          <Text style={styles.linkText}>View listing →</Text>
+          <Text style={styles.linkText}>View details →</Text>
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -471,11 +575,25 @@ const CustomizationScreen = () => {
       {activeTab === 'preview' && (
         <ScrollView style={styles.content} contentContainerStyle={styles.previewContent}>
           <Text style={styles.previewHeading}>AI Mod Preview</Text>
-          <Text style={styles.previewSubtext}>
-            {selectedParts.size > 0
-              ? `${selectedParts.size} part${selectedParts.size > 1 ? 's' : ''} selected`
-              : 'Select parts in the Online Parts tab, or describe your mods below'}
-          </Text>
+
+          {/* Selected parts cart */}
+          {selectedParts.size > 0 ? (
+            <View style={styles.previewCart}>
+              <Text style={styles.previewCartTitle}>🛒 Parts in your build ({selectedParts.size})</Text>
+              {parts.filter(p => selectedParts.has(p.id)).map(p => (
+                <View key={p.id} style={styles.previewCartItem}>
+                  <Text style={styles.previewCartBullet}>•</Text>
+                  <Text style={styles.previewCartName} numberOfLines={1}>{p.title}</Text>
+                  <Text style={styles.previewCartPrice}>${p.price.toFixed(0)}</Text>
+                </View>
+              ))}
+              <Text style={styles.previewCartHint}>These parts will be included in the generated image</Text>
+            </View>
+          ) : (
+            <Text style={styles.previewSubtext}>
+              Select parts in the Online Parts tab or via the AI assistant, then generate a preview
+            </Text>
+          )}
 
           <TextInput
             style={styles.descInput}
@@ -529,6 +647,177 @@ const CustomizationScreen = () => {
           )}
         </ScrollView>
       )}
+      {/* Part Detail Modal */}
+      {detailPart && (
+        <Modal visible animationType="slide" transparent onRequestClose={() => setDetailPart(null)}>
+          <View style={styles.detailOverlay}>
+            <View style={styles.detailPanel}>
+              {detailPart.imageUrl ? (
+                <Image source={{uri: detailPart.imageUrl}} style={styles.detailImage} resizeMode="cover" />
+              ) : (
+                <View style={styles.detailImagePlaceholder}>
+                  <Text style={styles.detailImagePlaceholderText}>🔧</Text>
+                </View>
+              )}
+              <View style={styles.detailBody}>
+                <View style={styles.detailSourceRow}>
+                  <Text style={styles.detailSource}>{detailPart.source}</Text>
+                  <Text style={styles.detailCondition}>{detailPart.condition}</Text>
+                </View>
+                <Text style={styles.detailName}>{detailPart.name}</Text>
+                <Text style={styles.detailPrice}>{detailPart.currency} {detailPart.price.toFixed(2)}</Text>
+                <TouchableOpacity
+                  style={styles.detailAddBtn}
+                  onPress={() => { addPartFromAI(detailPart); setDetailPart(null); }}>
+                  <Text style={styles.detailAddBtnText}>+ Add to build</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.detailBuyBtn}
+                  onPress={() => { Linking.openURL(detailPart.purchaseUrl); setDetailPart(null); }}>
+                  <Text style={styles.detailBuyBtnText}>Buy on {detailPart.source === 'ebay' ? 'eBay' : 'AliExpress'} →</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.detailCloseBtn} onPress={() => setDetailPart(null)}>
+                  <Text style={styles.detailCloseBtnText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Floating AI button */}
+      <TouchableOpacity
+        style={styles.aiFab}
+        onPress={() => setChatOpen(true)}
+        activeOpacity={0.85}>
+        <Text style={styles.aiFabText}>🤖</Text>
+      </TouchableOpacity>
+
+      {/* AI Chat Modal */}
+      <Modal
+        visible={chatOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setChatOpen(false)}>
+        <View style={styles.chatModal}>
+          <KeyboardAvoidingView
+            style={styles.chatPanel}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
+            {/* Header */}
+            <View style={styles.chatHeader}>
+              <Text style={styles.chatHeaderTitle}>🤖 AI Customization Assistant</Text>
+              <TouchableOpacity style={styles.chatCloseBtn} onPress={() => setChatOpen(false)}>
+                <Text style={styles.chatCloseBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Market selector */}
+            <View style={styles.chatLocationBar}>
+              <Text style={styles.chatLocationLabel}>Market:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.chatLocationChips}>
+                  {COUNTRIES.map(c => (
+                    <TouchableOpacity
+                      key={c.code}
+                      style={[styles.chatLocationChip, country === c.code && styles.chatLocationChipSelected]}
+                      onPress={() => setCountry(c.code)}
+                      activeOpacity={0.7}>
+                      <Text style={[styles.chatLocationChipText, country === c.code && styles.chatLocationChipTextSelected]}>
+                        {c.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* Messages */}
+            <FlatList
+              ref={chatListRef}
+              data={chatMessages}
+              keyExtractor={item => item.id}
+              contentContainerStyle={chatMessages.length === 0 ? undefined : styles.chatMessageList}
+              onContentSizeChange={() => chatListRef.current?.scrollToEnd({animated: true})}
+              ListEmptyComponent={
+                <View style={styles.chatEmptyState}>
+                  <Text style={styles.chatEmptyIcon}>💬</Text>
+                  <Text style={styles.chatEmptyText}>
+                    Ask me anything about mods or parts
+                    {selectedCar ? ` for your ${selectedCar.year} ${selectedCar.make} ${selectedCar.model}` : ''}.
+                    {'\n\n'}I'll suggest parts you can add directly to your list.
+                  </Text>
+                </View>
+              }
+              renderItem={({item}) => (
+                <View style={[styles.chatBubbleWrapper, {alignItems: item.role === 'user' ? 'flex-end' : 'flex-start'}]}>
+                  <View style={[styles.chatBubble, item.role === 'user' ? styles.chatUserBubble : styles.chatAiBubble]}>
+                    <Text style={styles.chatRoleLabel}>{item.role === 'user' ? 'You' : '🤖 CarMod AI'}</Text>
+                    <Text style={styles.chatMessageText}>{item.content}</Text>
+                  </View>
+                  {item.parts && (
+                    <View style={styles.chatPartsSection}>
+                      <Text style={styles.chatPartsSectionTitle}>🛒 Suggested parts — tap to add to your list</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        {item.parts.map((part: AIPart) => (
+                          <TouchableOpacity
+                            key={part.id}
+                            style={styles.chatPartCard}
+                            onPress={() => setDetailPart(part)}
+                            activeOpacity={0.85}>
+                            {part.imageUrl ? (
+                              <Image source={{uri: part.imageUrl}} style={styles.chatPartImage} resizeMode="cover" />
+                            ) : (
+                              <View style={styles.chatPartImagePlaceholder}>
+                                <Text style={styles.chatPartImagePlaceholderText}>🔧</Text>
+                              </View>
+                            )}
+                            <Text style={styles.chatPartSource}>{part.source}</Text>
+                            <Text style={styles.chatPartName} numberOfLines={2}>{part.name}</Text>
+                            <Text style={styles.chatPartPrice}>{part.currency} {part.price.toFixed(2)}</Text>
+                            <TouchableOpacity
+                              style={styles.chatPartAddBtn}
+                              onPress={() => addPartFromAI(part)}>
+                              <Text style={styles.chatPartAddBtnText}>+ Add to list</Text>
+                            </TouchableOpacity>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              )}
+            />
+
+            {chatLoading && (
+              <View style={styles.chatLoadingRow}>
+                <ActivityIndicator size="small" color="#7c3aed" />
+                <Text style={styles.chatLoadingText}>Thinking...</Text>
+              </View>
+            )}
+
+            {/* Input bar */}
+            <View style={styles.chatInputBar}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Ask about mods, parts, upgrades..."
+                placeholderTextColor={colors.textSecondary}
+                value={chatInput}
+                onChangeText={setChatInput}
+                multiline
+                maxLength={500}
+                editable={!chatLoading}
+              />
+              <TouchableOpacity
+                style={[styles.chatSendBtn, (!chatInput.trim() || chatLoading) && styles.chatSendDisabled]}
+                onPress={sendChatMessage}
+                disabled={!chatInput.trim() || chatLoading}>
+                <Text style={styles.chatSendText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
