@@ -80,18 +80,18 @@ function getMockResults(query, source) {
   const keywords = query.toLowerCase();
   const parts = [];
   const mockData = [
-    { name: 'Sport Alloy Wheels 18"', price: 189.99, condition: 'New', keywords: ['rim', 'wheel', 'alloy'], img: 'wheels' },
-    { name: 'LED Headlight Assembly', price: 129.99, condition: 'New', keywords: ['headlight', 'led', 'light'], img: 'headlight' },
-    { name: 'Carbon Fiber Spoiler', price: 249.99, condition: 'New', keywords: ['spoiler', 'carbon', 'wing'], img: 'spoiler' },
-    { name: 'Performance Brake Kit', price: 299.99, condition: 'New', keywords: ['brake', 'pad', 'disc', 'rotor'], img: 'brakes' },
-    { name: 'Sport Exhaust Muffler', price: 179.99, condition: 'New', keywords: ['exhaust', 'muffler', 'pipe'], img: 'exhaust' },
-    { name: 'Leather Seat Covers Set', price: 89.99, condition: 'New', keywords: ['seat', 'leather', 'cover', 'interior'], img: 'seats' },
-    { name: 'Racing Steering Wheel', price: 159.99, condition: 'New', keywords: ['steering', 'wheel', 'racing'], img: 'steering' },
-    { name: 'Body Kit Side Skirts', price: 199.99, condition: 'New', keywords: ['body', 'kit', 'skirt', 'bumper'], img: 'bodykit' },
-    { name: 'HID Xenon Light Kit', price: 69.99, condition: 'New', keywords: ['hid', 'xenon', 'light', 'bulb'], img: 'lights' },
-    { name: 'Cold Air Intake System', price: 139.99, condition: 'New', keywords: ['air', 'intake', 'filter', 'engine'], img: 'intake' },
-    { name: 'Suspension Lowering Springs', price: 219.99, condition: 'New', keywords: ['suspension', 'spring', 'lower', 'coil'], img: 'suspension' },
-    { name: 'Chrome Door Handle Covers', price: 29.99, condition: 'New', keywords: ['chrome', 'door', 'handle', 'trim'], img: 'trim' },
+    { name: 'Sport Alloy Wheels 18"', price: 189.99, condition: 'New', keywords: ['rim', 'wheel', 'alloy'], imgTag: 'alloy,wheel,rim' },
+    { name: 'LED Headlight Assembly', price: 129.99, condition: 'New', keywords: ['headlight', 'led', 'light'], imgTag: 'headlight,led,car' },
+    { name: 'Carbon Fiber Spoiler', price: 249.99, condition: 'New', keywords: ['spoiler', 'carbon', 'wing'], imgTag: 'spoiler,carbon,car' },
+    { name: 'Performance Brake Kit', price: 299.99, condition: 'New', keywords: ['brake', 'pad', 'disc', 'rotor'], imgTag: 'brake,disc,rotor' },
+    { name: 'Sport Exhaust Muffler', price: 179.99, condition: 'New', keywords: ['exhaust', 'muffler', 'pipe'], imgTag: 'exhaust,muffler,car' },
+    { name: 'Leather Seat Covers Set', price: 89.99, condition: 'New', keywords: ['seat', 'leather', 'cover', 'interior'], imgTag: 'leather,seat,car,interior' },
+    { name: 'Racing Steering Wheel', price: 159.99, condition: 'New', keywords: ['steering', 'wheel', 'racing'], imgTag: 'steering,wheel,racing' },
+    { name: 'Body Kit Side Skirts', price: 199.99, condition: 'New', keywords: ['body', 'kit', 'skirt', 'bumper'], imgTag: 'bodykit,bumper,car' },
+    { name: 'HID Xenon Light Kit', price: 69.99, condition: 'New', keywords: ['hid', 'xenon', 'light', 'bulb'], imgTag: 'xenon,headlight,car' },
+    { name: 'Cold Air Intake System', price: 139.99, condition: 'New', keywords: ['air', 'intake', 'filter', 'engine'], imgTag: 'intake,engine,car' },
+    { name: 'Suspension Lowering Springs', price: 219.99, condition: 'New', keywords: ['suspension', 'spring', 'lower', 'coil'], imgTag: 'suspension,coilover,spring' },
+    { name: 'Chrome Door Handle Covers', price: 29.99, condition: 'New', keywords: ['chrome', 'door', 'handle', 'trim'], imgTag: 'chrome,door,handle,car' },
   ];
 
   // Filter by relevance to search query, or return all if no specific match
@@ -105,7 +105,7 @@ function getMockResults(query, source) {
     name: item.name,
     price: source === 'aliexpress' ? Math.round(item.price * 0.6 * 100) / 100 : item.price,
     currency: 'USD',
-    imageUrl: `https://via.placeholder.com/400x280/1e293b/10b981?text=${encodeURIComponent(item.img)}`,
+    imageUrl: `https://loremflickr.com/400/280/${item.imgTag}?lock=${i}`,
     purchaseUrl: source === 'ebay'
       ? `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.name)}`
       : `https://www.aliexpress.com/wholesale?SearchText=${encodeURIComponent(item.name)}`,
