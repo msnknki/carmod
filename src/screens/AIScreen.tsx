@@ -18,6 +18,8 @@ import {colors} from '../theme';
 import styles from './styles/AIScreen.styles';
 import {useCar} from '../context/CarContext';
 import {api} from '../services/api';
+import AppIcon from '../components/ui/AppIcon';
+import PressableScale from '../components/ui/PressableScale';
 
 type Part = {
   id: string;
@@ -38,11 +40,19 @@ type Message = {
 };
 
 const COUNTRIES = [
-  {code: 'LB', label: '🇱🇧 Lebanon'},
-  {code: 'AE', label: '🇦🇪 UAE'},
-  {code: 'US', label: '🇺🇸 USA'},
-  {code: 'GB', label: '🇬🇧 UK'},
-  {code: 'DE', label: '🇩🇪 Germany'},
+  {code: 'LB', label: 'Lebanon'},
+  {code: 'AE', label: 'UAE'},
+  {code: 'US', label: 'USA'},
+  {code: 'GB', label: 'UK'},
+  {code: 'DE', label: 'Germany'},
+];
+
+const SUGGESTIONS = [
+  'Best mods for my car',
+  'Why is my engine vibrating?',
+  'Compare brake pads',
+  'Best exhaust upgrade',
+  'Find parts in Lebanon',
 ];
 
 const AIScreen = () => {
@@ -55,8 +65,8 @@ const AIScreen = () => {
   const [detailPart, setDetailPart] = useState<Part | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
-  const sendMessage = async () => {
-    const text = input.trim();
+  const sendMessage = async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim();
     if (!text || loading) {
       return;
     }
@@ -105,95 +115,135 @@ const AIScreen = () => {
 
   const renderParts = (parts: Part[]) => (
     <View style={styles.partsSection}>
-      <Text style={styles.partsSectionTitle}>🛒 Parts found near you</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.partsScroll}>
+      <Text style={styles.partsSectionTitle}>Parts near you</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {parts.map(part => (
-          <TouchableOpacity
+          <PressableScale
             key={part.id}
             style={styles.partCard}
-            onPress={() => setDetailPart(part)}
-            activeOpacity={0.8}>
+            onPress={() => setDetailPart(part)}>
             {part.imageUrl ? (
               <Image source={{uri: part.imageUrl}} style={styles.partImage} resizeMode="cover" />
             ) : (
               <View style={styles.partImagePlaceholder}>
-                <Text style={styles.partImagePlaceholderText}>🔧</Text>
+                <AppIcon name="car-turbocharger" size={32} color={colors.textMuted} />
               </View>
             )}
             <Text style={styles.partSource}>{part.source}</Text>
-            <Text style={styles.partName} numberOfLines={2}>{part.name}</Text>
+            <Text style={styles.partName} numberOfLines={2}>
+              {part.name}
+            </Text>
             <Text style={styles.partPrice}>
               {part.currency} {part.price.toFixed(2)}
             </Text>
             <View style={styles.partViewBtn}>
-              <Text style={styles.partViewBtnText}>View →</Text>
+              <Text style={styles.partViewBtnText}>View details</Text>
             </View>
-          </TouchableOpacity>
+          </PressableScale>
         ))}
       </ScrollView>
     </View>
   );
 
-  const renderMessage = ({item}: {item: Message}) => (
-    <View style={item.role === 'user' ? {alignItems: 'flex-end'} : {alignItems: 'flex-start'}}>
-      <View style={[styles.bubble, item.role === 'user' ? styles.userBubble : styles.aiBubble]}>
-        <Text style={styles.roleLabel}>
-          {item.role === 'user' ? 'You' : '🤖 CarMod AI'}
-        </Text>
-        <Text style={styles.messageText}>{item.content}</Text>
+  const renderMessage = ({item}: {item: Message}) => {
+    const isUser = item.role === 'user';
+    return (
+      <View style={{alignItems: isUser ? 'flex-end' : 'flex-start'}}>
+        <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
+          <Text style={[styles.roleLabel, isUser && styles.userRoleLabel]}>
+            {isUser ? 'You' : 'CarMod AI'}
+          </Text>
+          <Text style={[styles.messageText, isUser && styles.userMessageText]}>
+            {item.content}
+          </Text>
+        </View>
+        {item.parts && renderParts(item.parts)}
       </View>
-      {item.parts && renderParts(item.parts)}
-    </View>
-  );
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}>
-
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.avatar}>
+            <AppIcon name="robot-outline" size={28} color={colors.primary} />
+          </View>
+          <View style={{flex: 1}}>
+            <Text style={styles.headerTitle}>AI Assistant</Text>
+            <Text style={styles.headerSubtitle}>
+              Smart automotive guidance
+            </Text>
+          </View>
+        </View>
         {selectedCar && (
           <View style={styles.carBanner}>
+            <AppIcon name="car-sports" size={18} color={colors.primary} />
             <Text style={styles.carBannerText}>
-              🚗 {selectedCar.year} {selectedCar.make} {selectedCar.model}
+              {selectedCar.year} {selectedCar.make} {selectedCar.model}
             </Text>
           </View>
         )}
+      </View>
 
-        {/* Market / country selector */}
-        <View style={styles.locationBar}>
-          <Text style={styles.locationLabel}>Market:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.locationChips}>
-              {COUNTRIES.map(c => (
-                <TouchableOpacity
-                  key={c.code}
-                  style={[styles.locationChip, country === c.code && styles.locationChipSelected]}
-                  onPress={() => setCountry(c.code)}
-                  activeOpacity={0.7}>
-                  <Text style={[styles.locationChipText, country === c.code && styles.locationChipTextSelected]}>
-                    {c.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
+      <View style={styles.locationBar}>
+        <Text style={styles.locationLabel}>Market</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.locationChips}>
+            {COUNTRIES.map(c => (
+              <PressableScale
+                key={c.code}
+                style={[
+                  styles.locationChip,
+                  country === c.code && styles.locationChipSelected,
+                ]}
+                onPress={() => setCountry(c.code)}>
+                <Text
+                  style={[
+                    styles.locationChipText,
+                    country === c.code && styles.locationChipTextSelected,
+                  ]}>
+                  {c.label}
+                </Text>
+              </PressableScale>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
 
-        {messages.length === 0 && (
+      {messages.length === 0 && (
+        <>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🤖</Text>
-            <Text style={styles.emptyTitle}>CarMod AI Assistant</Text>
+            <AppIcon name="chat-processing-outline" size={48} color={colors.primary} />
+            <Text style={styles.emptyTitle}>How can I help?</Text>
             <Text style={styles.emptySubtitle}>
               Ask about parts, repairs, or modifications
               {selectedCar
                 ? ` for your ${selectedCar.year} ${selectedCar.make} ${selectedCar.model}`
-                : ''}.
+                : ''}
+              .
             </Text>
           </View>
-        )}
+          <View style={styles.suggestionsWrap}>
+            <Text style={styles.suggestionsLabel}>Suggestions</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {SUGGESTIONS.map(s => (
+                <PressableScale
+                  key={s}
+                  style={styles.suggestionChip}
+                  onPress={() => sendMessage(s)}>
+                  <Text style={styles.suggestionText}>{s}</Text>
+                </PressableScale>
+              ))}
+            </ScrollView>
+          </View>
+        </>
+      )}
 
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}>
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -216,7 +266,7 @@ const AIScreen = () => {
           <TextInput
             style={styles.input}
             placeholder="Ask about your car..."
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textMuted}
             value={input}
             onChangeText={setInput}
             multiline
@@ -225,13 +275,13 @@ const AIScreen = () => {
           />
           <TouchableOpacity
             style={[styles.sendButton, (!input.trim() || loading) && styles.sendDisabled]}
-            onPress={sendMessage}
+            onPress={() => sendMessage()}
             disabled={!input.trim() || loading}>
-            <Text style={styles.sendText}>Send</Text>
+            <AppIcon name="send" size={22} color="#0B0B0B" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-      {/* Part Detail Modal */}
+
       {detailPart && (
         <Modal visible animationType="slide" transparent onRequestClose={() => setDetailPart(null)}>
           <View style={styles.detailOverlay}>
@@ -240,7 +290,7 @@ const AIScreen = () => {
                 <Image source={{uri: detailPart.imageUrl}} style={styles.detailImage} resizeMode="cover" />
               ) : (
                 <View style={styles.detailImagePlaceholder}>
-                  <Text style={styles.detailImagePlaceholderText}>🔧</Text>
+                  <AppIcon name="car-turbocharger" size={48} color={colors.textMuted} />
                 </View>
               )}
               <View style={styles.detailBody}>
@@ -249,11 +299,18 @@ const AIScreen = () => {
                   <Text style={styles.detailCondition}>{detailPart.condition}</Text>
                 </View>
                 <Text style={styles.detailName}>{detailPart.name}</Text>
-                <Text style={styles.detailPrice}>{detailPart.currency} {detailPart.price.toFixed(2)}</Text>
+                <Text style={styles.detailPrice}>
+                  {detailPart.currency} {detailPart.price.toFixed(2)}
+                </Text>
                 <TouchableOpacity
                   style={styles.detailBuyBtn}
-                  onPress={() => { Linking.openURL(detailPart.purchaseUrl); setDetailPart(null); }}>
-                  <Text style={styles.detailBuyBtnText}>Buy on {detailPart.source === 'ebay' ? 'eBay' : 'AliExpress'} →</Text>
+                  onPress={() => {
+                    Linking.openURL(detailPart.purchaseUrl);
+                    setDetailPart(null);
+                  }}>
+                  <Text style={styles.detailBuyBtnText}>
+                    Buy on {detailPart.source === 'ebay' ? 'eBay' : 'AliExpress'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.detailCloseBtn} onPress={() => setDetailPart(null)}>
                   <Text style={styles.detailCloseBtnText}>Close</Text>

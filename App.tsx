@@ -48,12 +48,14 @@ async function ensureGuestSession() {
 
 const SplashScreen = () => (
   <View style={splashStyles.container}>
-    <Text style={splashStyles.logo}>🚗</Text>
-    <Text style={splashStyles.title}>CarMod</Text>
+    <View style={splashStyles.logoRing}>
+      <Text style={splashStyles.logoMark}>CM</Text>
+    </View>
+    <Text style={splashStyles.title}>Car Mod</Text>
     <Text style={splashStyles.subtitle}>Modify · Diagnose · Visualize</Text>
     <ActivityIndicator
       size="large"
-      color="#2563eb"
+      color="#FFD60A"
       style={splashStyles.loader}
     />
   </View>
@@ -64,11 +66,27 @@ const splashStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0B0B0B',
   },
-  logo: {fontSize: 64, marginBottom: 12},
-  title: {fontSize: 32, fontWeight: 'bold', color: '#ffffff'},
-  subtitle: {fontSize: 14, color: '#94a3b8', marginTop: 4},
+  logoRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(255, 214, 10, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 214, 10, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  logoMark: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFD60A',
+    letterSpacing: 1,
+  },
+  title: {fontSize: 32, fontWeight: '700', color: '#ffffff', letterSpacing: -0.5},
+  subtitle: {fontSize: 14, color: '#B3B3B3', marginTop: 6},
   loader: {marginTop: 32},
 });
 
@@ -79,7 +97,9 @@ const App = () => {
     const init = async () => {
       await Promise.all([
         ensureGuestSession(), // INTEGRATION STEP 2: Replace with restoreSession() (see comment above)
-        new Promise(resolve => setTimeout(resolve, 1500)),
+        new Promise<void>(resolve => {
+          setTimeout(resolve, 1500);
+        }),
       ]);
       setReady(true);
     };

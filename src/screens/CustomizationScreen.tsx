@@ -1,4 +1,4 @@
-﻿import React, {useState, useRef} from 'react';
+﻿import React, {useState, useRef, useEffect} from 'react';
 import {
   Text,
   View,
@@ -14,10 +14,14 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useRoute, RouteProp} from '@react-navigation/native';
 import {colors} from '../theme';
 import styles from './styles/CustomizationScreen.styles';
 import {useCar} from '../context/CarContext';
 import {api} from '../services/api';
+import AppIcon from '../components/ui/AppIcon';
+import PressableScale from '../components/ui/PressableScale';
+import type {RootTabParamList} from '../types';
 
 type PartResult = {
   id: string;
@@ -59,16 +63,34 @@ type ChatMessage = {
 };
 
 const COUNTRIES = [
-  {code: 'LB', label: '🇱🇧 LB'},
-  {code: 'AE', label: '🇦🇪 UAE'},
-  {code: 'US', label: '🇺🇸 US'},
-  {code: 'GB', label: '🇬🇧 UK'},
-  {code: 'DE', label: '🇩🇪 DE'},
+  {code: 'LB', label: 'Lebanon'},
+  {code: 'AE', label: 'UAE'},
+  {code: 'US', label: 'USA'},
+  {code: 'GB', label: 'UK'},
+  {code: 'DE', label: 'Germany'},
+];
+
+const PART_CATEGORIES = [
+  {id: 'wheels', label: 'Wheels', icon: 'tire', query: 'alloy wheels'},
+  {id: 'exhaust', label: 'Exhaust', icon: 'pipe', query: 'performance exhaust'},
+  {id: 'brakes', label: 'Brakes', icon: 'car-brake-abs', query: 'brake pads'},
+  {id: 'lights', label: 'Lights', icon: 'car-light-dimmed', query: 'LED headlights'},
+  {id: 'spoilers', label: 'Spoilers', icon: 'car-sports', query: 'rear spoiler'},
+  {id: 'interior', label: 'Interior', icon: 'car-seat', query: 'interior trim kit'},
+];
+
+const TRENDING_MODS = [
+  'Coilovers',
+  'Cold air intake',
+  'Cat-back exhaust',
+  'Body kit',
+  'Carbon fiber hood',
 ];
 
 type Tab = 'parts' | 'shops' | 'preview';
 
 const CustomizationScreen = () => {
+  const route = useRoute<RouteProp<RootTabParamList, 'Customization'>>();
   const {selectedCar} = useCar();
   const [activeTab, setActiveTab] = useState<Tab>('parts');
 
@@ -108,14 +130,18 @@ const CustomizationScreen = () => {
   const [country, setCountry] = useState('LB');
   const chatListRef = useRef<FlatList>(null);
 
-  const searchParts = async () => {
-    if (!query.trim()) {
+  const searchParts = async (searchQuery?: string) => {
+    const q = (searchQuery ?? query).trim();
+    if (!q) {
       return;
+    }
+    if (searchQuery) {
+      setQuery(searchQuery);
     }
     setPartsLoading(true);
     setPartsError('');
     try {
-      const body: Record<string, string> = {query: query.trim()};
+      const body: Record<string, string> = {query: q};
       if (selectedCar) {
         body.carMake = selectedCar.make;
         body.carModel = selectedCar.model;
@@ -145,6 +171,22 @@ const CustomizationScreen = () => {
       setShopsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (route.params?.tab) {
+      setActiveTab(route.params.tab);
+    }
+  }, [route.params?.tab]);
+
+  useEffect(() => {
+    if (
+      route.params?.tab === 'shops' &&
+      shops.length === 0 &&
+      !shopsLoading
+    ) {
+      searchShops();
+    }
+  }, [route.params?.tab]);
 
   const getEstimate = async () => {
     const chosen = parts.filter(p => selectedParts.has(p.id));
@@ -320,7 +362,7 @@ const CustomizationScreen = () => {
           <Image source={{uri: item.imageUrl}} style={styles.cardImage} resizeMode="cover" />
         ) : (
           <View style={styles.cardImagePlaceholder}>
-            <Text style={styles.cardImagePlaceholderText}>🔧</Text>
+            <AppIcon name="wrench" size={36} color={colors.textMuted} />
           </View>
         )}
         <View style={styles.cardHeader}>
@@ -374,19 +416,24 @@ const CustomizationScreen = () => {
       </View>
       <Text style={styles.shopAddress}>{item.address}</Text>
       {item.rating !== null && (
-        <Text style={styles.shopRating}>
-          ⭐ {item.rating} ({item.totalRatings} reviews)
-        </Text>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4}}>
+          <AppIcon name="star" size={14} color={colors.primary} />
+          <Text style={styles.shopRating}>
+            {item.rating} ({item.totalRatings} reviews)
+          </Text>
+        </View>
       )}
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>🎨 Customization</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <Text style={styles.title}>Customization</Text>
+      <Text style={styles.titleSub}>Premium parts marketplace</Text>
 
       {selectedCar && (
         <View style={styles.carBanner}>
+          <AppIcon name="car-sports" size={18} color={colors.primary} />
           <Text style={styles.carBannerText}>
             {selectedCar.year} {selectedCar.make} {selectedCar.model}
           </Text>
@@ -403,7 +450,7 @@ const CustomizationScreen = () => {
               styles.tabText,
               activeTab === 'parts' && styles.tabTextActive,
             ]}>
-            🛒 Online Parts
+            Parts
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -419,7 +466,7 @@ const CustomizationScreen = () => {
               styles.tabText,
               activeTab === 'shops' && styles.tabTextActive,
             ]}>
-            📍 Local Shops
+            Shops
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -430,7 +477,7 @@ const CustomizationScreen = () => {
               styles.tabText,
               activeTab === 'preview' && styles.tabTextActive,
             ]}>
-            🖼️ Preview
+            Preview
           </Text>
         </TouchableOpacity>
       </View>
@@ -445,17 +492,19 @@ const CustomizationScreen = () => {
               placeholderTextColor={colors.textSecondary}
               value={query}
               onChangeText={setQuery}
-              onSubmitEditing={searchParts}
+              onSubmitEditing={() => searchParts()}
               returnKeyType="search"
             />
-            <TouchableOpacity
+            <PressableScale
               style={styles.searchBtn}
-              onPress={searchParts}
+              onPress={() => searchParts()}
               disabled={partsLoading}>
-              <Text style={styles.searchBtnText}>
-                {partsLoading ? '...' : '🔍'}
-              </Text>
-            </TouchableOpacity>
+              {partsLoading ? (
+                <ActivityIndicator color="#0B0B0B" size="small" />
+              ) : (
+                <AppIcon name="magnify" size={24} color="#0B0B0B" />
+              )}
+            </PressableScale>
           </View>
 
           {partsSource !== '' && parts.length > 0 && (
@@ -483,17 +532,50 @@ const CustomizationScreen = () => {
               style={styles.loader}
             />
           ) : parts.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🔧</Text>
-              <Text style={styles.emptyText}>
-                Search for parts to get started
-              </Text>
-              {!selectedCar && (
-                <Text style={styles.emptyHint}>
-                  Tip: Select a car on the Home tab for personalized results
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.emptyState}>
+                <View style={styles.emptyIconWrap}>
+                  <AppIcon name="storefront-outline" size={36} color={colors.primary} />
+                </View>
+                <Text style={styles.emptyText}>
+                  Discover premium modifications
                 </Text>
-              )}
-            </View>
+                {!selectedCar && (
+                  <Text style={styles.emptyHint}>
+                    Select a car on Home for personalized results
+                  </Text>
+                )}
+              </View>
+              <View style={styles.categorySection}>
+                <Text style={styles.categorySectionTitle}>Featured categories</Text>
+                <View style={styles.categoryGrid}>
+                  {PART_CATEGORIES.map(cat => (
+                    <PressableScale
+                      key={cat.id}
+                      style={styles.categoryCard}
+                      onPress={() => searchParts(cat.query)}>
+                      <View style={styles.categoryIcon}>
+                        <AppIcon name={cat.icon} size={22} color={colors.primary} />
+                      </View>
+                      <Text style={styles.categoryLabel}>{cat.label}</Text>
+                    </PressableScale>
+                  ))}
+                </View>
+              </View>
+              <View style={styles.trendingRow}>
+                <Text style={styles.categorySectionTitle}>Trending modifications</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {TRENDING_MODS.map(mod => (
+                    <PressableScale
+                      key={mod}
+                      style={styles.trendingChip}
+                      onPress={() => searchParts(mod)}>
+                      <Text style={styles.trendingText}>{mod}</Text>
+                    </PressableScale>
+                  ))}
+                </ScrollView>
+              </View>
+            </ScrollView>
           ) : (
             <>
               <FlatList
@@ -519,7 +601,7 @@ const CustomizationScreen = () => {
                     onPress={getEstimate}
                     disabled={estimateLoading}>
                     <Text style={styles.estimateBtnText}>
-                      {estimateLoading ? 'Estimating...' : '💰 Get Full Cost Estimate'}
+                      {estimateLoading ? 'Estimating...' : 'Get Full Cost Estimate'}
                     </Text>
                   </TouchableOpacity>
                   {estimateError !== '' && (
@@ -574,7 +656,9 @@ const CustomizationScreen = () => {
             />
           ) : shops.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📍</Text>
+              <View style={styles.emptyIconWrap}>
+                <AppIcon name="map-marker-radius" size={36} color={colors.primary} />
+              </View>
               <Text style={styles.emptyText}>Finding nearby shops...</Text>
             </View>
           ) : (
@@ -596,7 +680,9 @@ const CustomizationScreen = () => {
           {/* Selected parts cart */}
           {selectedParts.size > 0 ? (
             <View style={styles.previewCart}>
-              <Text style={styles.previewCartTitle}>🛒 Parts in your build ({selectedParts.size})</Text>
+              <Text style={styles.previewCartTitle}>
+                Parts in your build ({selectedParts.size})
+              </Text>
               {parts.filter(p => selectedParts.has(p.id)).map(p => (
                 <View key={p.id} style={styles.previewCartItem}>
                   <Text style={styles.previewCartBullet}>•</Text>
@@ -673,7 +759,7 @@ const CustomizationScreen = () => {
                 <Image source={{uri: detailPart.imageUrl}} style={styles.detailImage} resizeMode="cover" />
               ) : (
                 <View style={styles.detailImagePlaceholder}>
-                  <Text style={styles.detailImagePlaceholderText}>🔧</Text>
+                  <AppIcon name="wrench" size={48} color={colors.textMuted} />
                 </View>
               )}
               <View style={styles.detailBody}>
@@ -707,7 +793,7 @@ const CustomizationScreen = () => {
         style={styles.aiFab}
         onPress={() => setChatOpen(true)}
         activeOpacity={0.85}>
-        <Text style={styles.aiFabText}>🤖</Text>
+        <AppIcon name="robot-outline" size={28} color="#0B0B0B" />
       </TouchableOpacity>
 
       {/* AI Chat Modal */}
@@ -723,9 +809,9 @@ const CustomizationScreen = () => {
 
             {/* Header */}
             <View style={styles.chatHeader}>
-              <Text style={styles.chatHeaderTitle}>🤖 AI Customization Assistant</Text>
+              <Text style={styles.chatHeaderTitle}>AI Customization Assistant</Text>
               <TouchableOpacity style={styles.chatCloseBtn} onPress={() => setChatOpen(false)}>
-                <Text style={styles.chatCloseBtnText}>✕</Text>
+                <AppIcon name="close" size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -758,7 +844,7 @@ const CustomizationScreen = () => {
               onContentSizeChange={() => chatListRef.current?.scrollToEnd({animated: true})}
               ListEmptyComponent={
                 <View style={styles.chatEmptyState}>
-                  <Text style={styles.chatEmptyIcon}>💬</Text>
+                  <AppIcon name="chat-outline" size={40} color={colors.primary} />
                   <Text style={styles.chatEmptyText}>
                     Ask me anything about mods or parts
                     {selectedCar ? ` for your ${selectedCar.year} ${selectedCar.make} ${selectedCar.model}` : ''}.
@@ -769,12 +855,16 @@ const CustomizationScreen = () => {
               renderItem={({item}) => (
                 <View style={[styles.chatBubbleWrapper, {alignItems: item.role === 'user' ? 'flex-end' : 'flex-start'}]}>
                   <View style={[styles.chatBubble, item.role === 'user' ? styles.chatUserBubble : styles.chatAiBubble]}>
-                    <Text style={styles.chatRoleLabel}>{item.role === 'user' ? 'You' : '🤖 CarMod AI'}</Text>
+                    <Text style={styles.chatRoleLabel}>
+                      {item.role === 'user' ? 'You' : 'CarMod AI'}
+                    </Text>
                     <Text style={styles.chatMessageText}>{item.content}</Text>
                   </View>
                   {item.parts && (
                     <View style={styles.chatPartsSection}>
-                      <Text style={styles.chatPartsSectionTitle}>🛒 Suggested parts — tap to add to your list</Text>
+                      <Text style={styles.chatPartsSectionTitle}>
+                        Suggested parts — tap to add
+                      </Text>
                       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {item.parts.map((part: AIPart) => (
                           <TouchableOpacity
@@ -786,7 +876,7 @@ const CustomizationScreen = () => {
                               <Image source={{uri: part.imageUrl}} style={styles.chatPartImage} resizeMode="cover" />
                             ) : (
                               <View style={styles.chatPartImagePlaceholder}>
-                                <Text style={styles.chatPartImagePlaceholderText}>🔧</Text>
+                                <AppIcon name="wrench" size={28} color={colors.textMuted} />
                               </View>
                             )}
                             <Text style={styles.chatPartSource}>{part.source}</Text>
@@ -808,7 +898,7 @@ const CustomizationScreen = () => {
 
             {chatLoading && (
               <View style={styles.chatLoadingRow}>
-                <ActivityIndicator size="small" color="#7c3aed" />
+                <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.chatLoadingText}>Thinking...</Text>
               </View>
             )}

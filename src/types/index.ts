@@ -1,7 +1,9 @@
+export type CustomizationTab = 'parts' | 'shops' | 'preview';
+
 export type RootTabParamList = {
   Home: undefined;
   DIY: undefined;
-  Customization: undefined;
+  Customization: {tab?: CustomizationTab} | undefined;
   AI: undefined;
 };
 

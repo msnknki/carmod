@@ -2,7 +2,6 @@ import React, {useState} from 'react';
 import {
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   View,
   ActivityIndicator,
@@ -14,15 +13,18 @@ import {colors} from '../theme';
 import styles from './styles/DIYScreen.styles';
 import {useCar} from '../context/CarContext';
 import {api} from '../services/api';
+import AppIcon from '../components/ui/AppIcon';
+import PressableScale from '../components/ui/PressableScale';
+import PrimaryButton from '../components/ui/PrimaryButton';
 
 const QUICK_SYMPTOMS = [
-  {label: '🔊 Strange Noise', value: 'My car is making a strange noise'},
-  {label: '🔧 Engine Issue', value: 'My car has an engine problem'},
-  {label: '💡 Warning Light', value: 'A warning light appeared on my dashboard'},
-  {label: '📳 Vibration', value: 'My car vibrates when driving'},
-  {label: '🛞 Brake Problem', value: 'My brakes feel off'},
-  {label: '❄️ AC Not Working', value: 'My air conditioning is not working'},
-];
+  {label: 'Strange Noise', value: 'My car is making a strange noise', icon: 'volume-high'},
+  {label: 'Engine Issue', value: 'My car has an engine problem', icon: 'engine'},
+  {label: 'Warning Light', value: 'A warning light appeared on my dashboard', icon: 'car-light-alert'},
+  {label: 'Vibration', value: 'My car vibrates when driving', icon: 'vibrate'},
+  {label: 'Brake Problem', value: 'My brakes feel off', icon: 'car-brake-alert'},
+  {label: 'AC Not Working', value: 'My air conditioning is not working', icon: 'snowflake'},
+] as const;
 
 type DiagnosisResult = {
   diagnosis: string;
@@ -37,6 +39,19 @@ type DiagnosisResult = {
   estimatedCost: {parts: string; labor: string};
   clarifyingQuestions?: string[];
 };
+
+const CardHeader = ({
+  icon,
+  title,
+}: {
+  icon: string;
+  title: string;
+}) => (
+  <View style={styles.cardTitleRow}>
+    <AppIcon name={icon} size={20} color={colors.primary} />
+    <Text style={styles.cardTitle}>{title}</Text>
+  </View>
+);
 
 const DIYScreen = () => {
   const {selectedCar} = useCar();
@@ -109,11 +124,15 @@ const DIYScreen = () => {
 
   const getDifficultyColor = (d: string) => {
     switch (d) {
-      case 'easy': return colors.accent;
-      case 'moderate': return colors.warning;
-      case 'hard': return colors.danger;
-      case 'professional': return colors.danger;
-      default: return colors.textSecondary;
+      case 'easy':
+        return colors.accent;
+      case 'moderate':
+        return colors.warning;
+      case 'hard':
+      case 'professional':
+        return colors.danger;
+      default:
+        return colors.textMuted;
     }
   };
 
@@ -121,55 +140,61 @@ const DIYScreen = () => {
     result?.clarifyingQuestions && result.clarifyingQuestions.length > 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}>
           {selectedCar && (
             <View style={styles.carBanner}>
+              <AppIcon name="car-sports" size={20} color={colors.primary} />
               <Text style={styles.carBannerText}>
-                🚗 {selectedCar.year} {selectedCar.make} {selectedCar.model}
+                {selectedCar.year} {selectedCar.make} {selectedCar.model}
               </Text>
             </View>
           )}
 
-          <Text style={styles.heading}>Describe Your Problem</Text>
+          <Text style={styles.sectionLabel}>Diagnostics</Text>
+          <Text style={styles.heading}>Describe your problem</Text>
 
-          <TextInput
-            style={styles.textArea}
-            placeholder="e.g. My car makes a clicking noise when I turn the steering wheel..."
-            placeholderTextColor={colors.textSecondary}
-            value={symptom}
-            onChangeText={setSymptom}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            editable={!result}
-          />
+          <View style={styles.problemCard}>
+            <TextInput
+              style={styles.textArea}
+              placeholder="e.g. Clicking noise when turning the steering wheel..."
+              placeholderTextColor={colors.textMuted}
+              value={symptom}
+              onChangeText={setSymptom}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              editable={!result}
+            />
+          </View>
 
           {!result && (
-            <TouchableOpacity
-              style={[styles.diagnoseButton, (!symptom.trim() || loading) && styles.disabled]}
+            <PrimaryButton
+              label={loading ? 'Analyzing...' : 'Diagnose Problem'}
               onPress={() => diagnose()}
-              disabled={!symptom.trim() || loading}>
-              <Text style={styles.diagnoseButtonText}>
-                {loading ? 'Analyzing...' : '🔍 Diagnose Problem'}
-              </Text>
-            </TouchableOpacity>
+              disabled={!symptom.trim() || loading}
+              loading={loading}
+              style={styles.diagnoseButton}
+            />
           )}
 
           {!result && !loading && (
             <View style={styles.quickSection}>
-              <Text style={styles.quickTitle}>Or select a common issue:</Text>
+              <Text style={styles.quickTitle}>Common issues</Text>
               <View style={styles.quickGrid}>
                 {QUICK_SYMPTOMS.map(item => (
-                  <TouchableOpacity
+                  <PressableScale
                     key={item.value}
-                    style={styles.quickButton}
+                    style={styles.quickChip}
                     onPress={() => diagnose(item.value)}>
-                    <Text style={styles.quickButtonText}>{item.label}</Text>
-                  </TouchableOpacity>
+                    <AppIcon name={item.icon} size={20} color={colors.primary} />
+                    <Text style={styles.quickChipText}>{item.label}</Text>
+                  </PressableScale>
                 ))}
               </View>
             </View>
@@ -186,41 +211,49 @@ const DIYScreen = () => {
             <View style={styles.results}>
               {result.workshopRecommended && (
                 <View style={styles.workshopWarning}>
-                  <Text style={styles.workshopIcon}>⚠️</Text>
+                  <AppIcon name="alert-circle" size={22} color={colors.danger} />
                   <Text style={styles.workshopText}>
-                    Workshop Recommended: {result.workshopReason}
+                    Workshop recommended: {result.workshopReason}
                   </Text>
                 </View>
               )}
 
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>🔍 Diagnosis</Text>
+                <CardHeader icon="magnify-scan" title="Diagnosis" />
                 <Text style={styles.cardContent}>{result.diagnosis}</Text>
                 {result.difficulty && result.difficulty !== 'unknown' && (
                   <View style={styles.metaRow}>
-                    <View style={[styles.badge, {backgroundColor: getDifficultyColor(result.difficulty)}]}>
+                    <View
+                      style={[
+                        styles.badge,
+                        {backgroundColor: getDifficultyColor(result.difficulty)},
+                      ]}>
                       <Text style={styles.badgeText}>{result.difficulty}</Text>
                     </View>
                     {!!result.estimatedTime && (
-                      <Text style={styles.metaText}>⏱ {result.estimatedTime}</Text>
+                      <Text style={styles.metaText}>{result.estimatedTime}</Text>
                     )}
-                    <Text style={styles.metaText}>Confidence: {result.confidence}</Text>
+                    <Text style={styles.metaText}>
+                      Confidence: {result.confidence}
+                    </Text>
                   </View>
                 )}
               </View>
 
               {result.safetyWarnings.length > 0 && (
                 <View style={[styles.card, styles.warningCard]}>
-                  <Text style={styles.cardTitle}>⚠️ Safety Warnings</Text>
+                  <CardHeader icon="shield-alert" title="Safety warnings" />
                   {result.safetyWarnings.map((w, i) => (
-                    <Text key={i} style={styles.warningItem}>• {w}</Text>
+                    <Text key={i} style={styles.warningItem}>
+                      • {w}
+                    </Text>
                   ))}
                 </View>
               )}
 
               {result.tools.length > 0 && (
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>🛠️ Tools Needed</Text>
+                  <CardHeader icon="toolbox-outline" title="Tools needed" />
                   <View style={styles.toolsGrid}>
                     {result.tools.map((t, i) => (
                       <View key={i} style={styles.toolChip}>
@@ -233,7 +266,7 @@ const DIYScreen = () => {
 
               {result.steps.length > 0 && (
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>📋 Step-by-Step Guide</Text>
+                  <CardHeader icon="format-list-numbered" title="Step-by-step guide" />
                   {result.steps.map((s, i) => (
                     <View key={i} style={styles.stepRow}>
                       <View style={styles.stepNumber}>
@@ -247,24 +280,25 @@ const DIYScreen = () => {
 
               {(result.estimatedCost.parts || result.estimatedCost.labor) && (
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>💰 Estimated Cost</Text>
+                  <CardHeader icon="cash" title="Estimated cost" />
                   <View style={styles.costRow}>
-                    <Text style={styles.costLabel}>Parts:</Text>
-                    <Text style={styles.costValue}>{result.estimatedCost.parts}</Text>
+                    <Text style={styles.costLabel}>Parts</Text>
+                    <Text style={styles.costValue}>
+                      {result.estimatedCost.parts}
+                    </Text>
                   </View>
                   <View style={styles.costRow}>
-                    <Text style={styles.costLabel}>Labor:</Text>
-                    <Text style={styles.costValue}>{result.estimatedCost.labor}</Text>
+                    <Text style={styles.costLabel}>Labor</Text>
+                    <Text style={styles.costValue}>
+                      {result.estimatedCost.labor}
+                    </Text>
                   </View>
                 </View>
               )}
 
-              {/* Follow-up questions */}
               {hasQuestions && (
                 <View style={styles.followUpCard}>
-                  <Text style={styles.followUpTitle}>
-                    🤔 Help me narrow it down further:
-                  </Text>
+                  <CardHeader icon="help-circle-outline" title="Help narrow it down" />
                   {result.clarifyingQuestions!.map((q, i) => (
                     <Text key={i} style={styles.followUpQuestion}>
                       • {q}
@@ -273,30 +307,27 @@ const DIYScreen = () => {
                   <TextInput
                     style={styles.followUpInput}
                     placeholder="Type your answers here..."
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textMuted}
                     value={followUpAnswer}
                     onChangeText={setFollowUpAnswer}
                     multiline
                     numberOfLines={3}
                     textAlignVertical="top"
                   />
-                  <TouchableOpacity
-                    style={[
-                      styles.followUpButton,
-                      !followUpAnswer.trim() && styles.disabled,
-                    ]}
+                  <PrimaryButton
+                    label="Refine diagnosis"
                     onPress={submitFollowUp}
-                    disabled={!followUpAnswer.trim()}>
-                    <Text style={styles.followUpButtonText}>
-                      🔍 Get More Specific Diagnosis
-                    </Text>
-                  </TouchableOpacity>
+                    disabled={!followUpAnswer.trim()}
+                  />
                 </View>
               )}
 
-              <TouchableOpacity style={styles.newButton} onPress={reset}>
-                <Text style={styles.newButtonText}>🔄 New Diagnosis</Text>
-              </TouchableOpacity>
+              <PrimaryButton
+                label="New diagnosis"
+                variant="outline"
+                onPress={reset}
+                style={styles.newButton}
+              />
             </View>
           )}
         </ScrollView>
@@ -304,6 +335,5 @@ const DIYScreen = () => {
     </SafeAreaView>
   );
 };
-
 
 export default DIYScreen;

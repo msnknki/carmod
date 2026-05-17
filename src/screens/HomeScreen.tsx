@@ -2,7 +2,6 @@ import React, {useState} from 'react';
 import {
   Text,
   TextInput,
-  TouchableOpacity,
   FlatList,
   View,
   Alert,
@@ -12,14 +11,55 @@ import {
   Image,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
+import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
-import {colors} from '../theme';
+import {colors, spacing} from '../theme';
 import {useCar} from '../context/CarContext';
 import styles from './styles/HomeScreen.styles';
+import AppIcon from '../components/ui/AppIcon';
+import PressableScale from '../components/ui/PressableScale';
+import PrimaryButton from '../components/ui/PrimaryButton';
+import type {RootTabParamList} from '../types';
 
 const currentYear = new Date().getFullYear();
 
+const QUICK_ACTIONS = [
+  {
+    id: 'diy',
+    title: 'Diagnose Problem',
+    subtitle: 'AI-powered repair guide',
+    icon: 'stethoscope' as const,
+    tab: 'DIY' as const,
+  },
+  {
+    id: 'parts',
+    title: 'Find Parts',
+    subtitle: 'Search mods & upgrades',
+    icon: 'cart-outline' as const,
+    tab: 'Customization' as const,
+    params: {tab: 'parts' as const},
+  },
+  {
+    id: 'ai',
+    title: 'AI Assistant',
+    subtitle: 'Ask anything about your car',
+    icon: 'robot-outline' as const,
+    tab: 'AI' as const,
+  },
+  {
+    id: 'shops',
+    title: 'Nearby Shops',
+    subtitle: 'Local mechanics & stores',
+    icon: 'map-marker-radius' as const,
+    tab: 'Customization' as const,
+    params: {tab: 'shops' as const},
+  },
+];
+
 const HomeScreen = () => {
+  const navigation =
+    useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const {cars, selectedCar, addCar, removeCar, selectCar} = useCar();
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
@@ -61,12 +101,24 @@ const HomeScreen = () => {
       return;
     }
 
-    if (isNaN(parsedYear) || parsedYear < 1900 || parsedYear > currentYear + 1) {
-      Alert.alert('Invalid Year', `Year must be between 1900 and ${currentYear + 1}.`);
+    if (
+      isNaN(parsedYear) ||
+      parsedYear < 1900 ||
+      parsedYear > currentYear + 1
+    ) {
+      Alert.alert(
+        'Invalid Year',
+        `Year must be between 1900 and ${currentYear + 1}.`,
+      );
       return;
     }
 
-    addCar({make: trimmedMake, model: trimmedModel, year: parsedYear, imageUri});
+    addCar({
+      make: trimmedMake,
+      model: trimmedModel,
+      year: parsedYear,
+      imageUri,
+    });
 
     setMake('');
     setModel('');
@@ -75,93 +127,178 @@ const HomeScreen = () => {
     setShowForm(false);
   };
 
+  const navigateQuick = (action: (typeof QUICK_ACTIONS)[0]) => {
+    if (action.params) {
+      navigation.navigate(action.tab, action.params);
+    } else {
+      navigation.navigate(action.tab);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.title}>Car Mod App 🚗</Text>
-          <Text style={styles.subtitle}>Your car modification assistant</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Welcome back</Text>
+            <Text style={styles.title}>Car Mod</Text>
+            <Text style={styles.subtitle}>
+              Your premium automotive companion
+            </Text>
+          </View>
 
-          {selectedCar && (
-            <View style={styles.selectedCard}>
-              {selectedCar.imageUri && (
-                <Image source={{uri: selectedCar.imageUri}} style={styles.selectedImage} />
+          {selectedCar ? (
+            <View style={styles.heroCard}>
+              {selectedCar.imageUri ? (
+                <Image
+                  source={{uri: selectedCar.imageUri}}
+                  style={styles.heroImage}
+                />
+              ) : (
+                <View style={styles.heroImagePlaceholder}>
+                  <AppIcon name="car-sports" size={56} color={colors.textMuted} />
+                </View>
               )}
-              <Text style={styles.selectedLabel}>Selected Car</Text>
-              <Text style={styles.selectedCar}>
-                {selectedCar.year} {selectedCar.make} {selectedCar.model}
+              <View style={styles.heroOverlay}>
+                <Text style={styles.heroLabel}>Active vehicle</Text>
+                <Text style={styles.heroCarName}>
+                  {selectedCar.year} {selectedCar.make} {selectedCar.model}
+                </Text>
+                <View style={styles.statsRow}>
+                  <View style={styles.statPill}>
+                    <Text style={styles.statValue}>—</Text>
+                    <Text style={styles.statLabel}>Mileage</Text>
+                  </View>
+                  <View style={styles.statPill}>
+                    <Text style={styles.statValue}>Good</Text>
+                    <Text style={styles.statLabel}>Health</Text>
+                  </View>
+                  <View style={styles.statPill}>
+                    <Text style={styles.statValue}>{cars.length}</Text>
+                    <Text style={styles.statLabel}>Garage</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.heroCard, styles.emptyHero]}>
+              <View style={styles.emptyHeroIcon}>
+                <AppIcon name="garage-open" size={36} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyHeroTitle}>Build your garage</Text>
+              <Text style={styles.emptyHeroText}>
+                Add your vehicle to unlock personalized diagnostics, parts, and
+                AI recommendations.
               </Text>
+              {!showForm && (
+                <PrimaryButton
+                  label="Add Your Car"
+                  onPress={() => setShowForm(true)}
+                  style={{width: '100%'}}
+                />
+              )}
             </View>
           )}
 
-          {!showForm ? (
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => setShowForm(true)}>
-              <Text style={styles.addButtonText}>+ Add a Car</Text>
-            </TouchableOpacity>
-          ) : (
+          {selectedCar && !showForm && (
+            <PrimaryButton
+              label="Add Another Car"
+              variant="outline"
+              onPress={() => setShowForm(true)}
+              style={{marginBottom: spacing.lg}}
+            />
+          )}
+
+          {showForm && (
             <View style={styles.form}>
               <Text style={styles.formTitle}>Add Your Car</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Make (e.g. BMW, Toyota)"
-                placeholderTextColor={colors.textSecondary}
+                placeholder="Make (e.g. BMW, Porsche)"
+                placeholderTextColor={colors.textMuted}
                 value={make}
                 onChangeText={setMake}
               />
               <TextInput
                 style={styles.input}
-                placeholder="Model (e.g. 320i, Camry)"
-                placeholderTextColor={colors.textSecondary}
+                placeholder="Model (e.g. 911, C63)"
+                placeholderTextColor={colors.textMuted}
                 value={model}
                 onChangeText={setModel}
               />
               <TextInput
                 style={styles.input}
-                placeholder="Year (e.g. 2015)"
-                placeholderTextColor={colors.textSecondary}
+                placeholder="Year (e.g. 2022)"
+                placeholderTextColor={colors.textMuted}
                 value={year}
                 onChangeText={setYear}
                 keyboardType="numeric"
                 maxLength={4}
               />
-
-              <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+              <PressableScale style={styles.photoButton} onPress={pickImage}>
                 {imageUri ? (
                   <Image source={{uri: imageUri}} style={styles.photoPreview} />
                 ) : (
-                  <Text style={styles.photoButtonText}>📷 Add Car Photo (optional)</Text>
+                  <>
+                    <AppIcon name="camera-plus-outline" size={22} color={colors.primary} />
+                    <Text style={styles.photoButtonText}>Add car photo (optional)</Text>
+                  </>
                 )}
-              </TouchableOpacity>
-
+              </PressableScale>
               <View style={styles.formButtons}>
-                <TouchableOpacity style={styles.saveButton} onPress={handleAddCar}>
-                  <Text style={styles.saveButtonText}>Save Car</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowForm(false);
-                    setImageUri(undefined);
-                  }}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
+                <View style={{flex: 1}}>
+                  <PrimaryButton label="Save Car" onPress={handleAddCar} />
+                </View>
+                <View style={{flex: 1}}>
+                  <PrimaryButton
+                    label="Cancel"
+                    variant="ghost"
+                    onPress={() => {
+                      setShowForm(false);
+                      setImageUri(undefined);
+                    }}
+                  />
+                </View>
               </View>
             </View>
           )}
 
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+          </View>
+          <View style={styles.quickGrid}>
+            {QUICK_ACTIONS.map(action => (
+              <PressableScale
+                key={action.id}
+                style={styles.quickCard}
+                onPress={() => navigateQuick(action)}>
+                <View style={styles.quickIconWrap}>
+                  <AppIcon name={action.icon} size={22} color={colors.primary} />
+                </View>
+                <Text style={styles.quickTitle}>{action.title}</Text>
+                <Text style={styles.quickSubtitle}>{action.subtitle}</Text>
+              </PressableScale>
+            ))}
+          </View>
+
           {cars.length > 0 && (
             <View style={styles.carsSection}>
-              <Text style={styles.sectionTitle}>Your Cars</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Your Garage</Text>
+                <Text style={{color: colors.textMuted, fontSize: 13}}>
+                  Long press to remove
+                </Text>
+              </View>
               <FlatList
                 data={cars}
                 scrollEnabled={false}
                 keyExtractor={item => item.id}
                 renderItem={({item}) => (
-                  <TouchableOpacity
+                  <PressableScale
                     style={[
                       styles.carCard,
                       selectedCar?.id === item.id && styles.carCardSelected,
@@ -181,18 +318,24 @@ const HomeScreen = () => {
                         ],
                       )
                     }>
-                    {item.imageUri && (
+                    {item.imageUri ? (
                       <Image source={{uri: item.imageUri}} style={styles.cardThumb} />
+                    ) : (
+                      <View style={[styles.cardThumb, styles.heroImagePlaceholder]}>
+                        <AppIcon name="car" size={28} color={colors.textMuted} />
+                      </View>
                     )}
                     <View style={styles.cardInfo}>
                       <Text style={styles.carName}>
                         {item.year} {item.make} {item.model}
                       </Text>
                       {selectedCar?.id === item.id && (
-                        <Text style={styles.activeLabel}>Active</Text>
+                        <View style={styles.activeBadge}>
+                          <Text style={styles.activeLabel}>ACTIVE</Text>
+                        </View>
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </PressableScale>
                 )}
               />
             </View>
