@@ -1,7 +1,7 @@
 const axios = require('axios');
 const { getPartsSource } = require('../utils/shippingRegions');
 
-// Search eBay Browse API
+// Search eBay Finding API (uses App ID directly, no OAuth needed)
 async function searchEbay(query, limit = 10) {
   const apiKey = process.env.EBAY_API_KEY;
   if (!apiKey) {
@@ -9,28 +9,31 @@ async function searchEbay(query, limit = 10) {
   }
 
   try {
-    const res = await axios.get('https://api.ebay.com/buy/browse/v1/item_summary/search', {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+    const res = await axios.get('https://svcs.ebay.com/services/search/FindingService/v1', {
       params: {
-        q: query,
-        limit,
-        category_ids: '6030', // Auto parts category
+        'OPERATION-NAME': 'findItemsByKeywords',
+        'SERVICE-VERSION': '1.0.0',
+        'SECURITY-APPNAME': apiKey,
+        'RESPONSE-DATA-FORMAT': 'JSON',
+        'REST-PAYLOAD': true,
+        keywords: query,
+        'categoryId': '6030',
+        'paginationInput.entriesPerPage': limit,
+        'outputSelector': 'GalleryInfo',
       },
     });
 
-    return (res.data.itemSummaries || []).map(item => ({
-      id: item.itemId,
-      name: item.title,
-      price: parseFloat(item.price?.value || 0),
-      currency: item.price?.currency || 'USD',
-      imageUrl: item.image?.imageUrl || '',
-      purchaseUrl: item.itemWebUrl,
-      condition: item.condition || 'Unknown',
+    const items = res.data?.findItemsByKeywordsResponse?.[0]?.searchResult?.[0]?.item || [];
+    return items.map(item => ({
+      id: item.itemId?.[0],
+      name: item.title?.[0],
+      price: parseFloat(item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ || 0),
+      currency: item.sellingStatus?.[0]?.currentPrice?.[0]?.['@currencyId'] || 'USD',
+      imageUrl: item.galleryURL?.[0] || '',
+      purchaseUrl: item.viewItemURL?.[0],
+      condition: item.condition?.[0]?.conditionDisplayName?.[0] || 'Used',
       source: 'ebay',
-      sellerLocation: item.itemLocation?.country || '',
+      sellerLocation: item.location?.[0] || '',
     }));
   } catch (err) {
     console.error('eBay API error:', err.message);
