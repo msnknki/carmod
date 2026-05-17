@@ -27,6 +27,7 @@ type PartResult = {
   url: string;
   condition: string;
   source: string;
+  imageUrl?: string;
 };
 
 type ShopResult = {
@@ -78,6 +79,7 @@ const CustomizationScreen = () => {
   const [partsLoading, setPartsLoading] = useState(false);
   const [partsError, setPartsError] = useState('');
   const [partsSource, setPartsSource] = useState('');
+  const [optimizedQuery, setOptimizedQuery] = useState('');
 
   // Shops state
   const [shops, setShops] = useState<ShopResult[]>([]);
@@ -122,6 +124,7 @@ const CustomizationScreen = () => {
       const data = await api.post('/parts/search', body);
       setParts(data.results || []);
       setPartsSource(data.source || '');
+      setOptimizedQuery(data.query || '');
     } catch (err: any) {
       setPartsError(err.message || 'Search failed');
     } finally {
@@ -313,6 +316,13 @@ const CustomizationScreen = () => {
         style={[styles.card, selected && styles.cardSelected]}
         onPress={() => togglePart(item.id)}
         activeOpacity={0.7}>
+        {item.imageUrl ? (
+          <Image source={{uri: item.imageUrl}} style={styles.cardImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.cardImagePlaceholder}>
+            <Text style={styles.cardImagePlaceholderText}>🔧</Text>
+          </View>
+        )}
         <View style={styles.cardHeader}>
           <Text style={styles.partTitle} numberOfLines={2}>
             {item.title}
@@ -338,7 +348,7 @@ const CustomizationScreen = () => {
           {selected && <Text style={styles.checkmark}>✓</Text>}
         </View>
         <TouchableOpacity
-          onPress={() => setDetailPart({id: item.id, name: item.title, price: item.price, currency: item.currency, condition: item.condition, source: item.source, purchaseUrl: item.url, imageUrl: undefined})}
+          onPress={() => setDetailPart({id: item.id, name: item.title, price: item.price, currency: item.currency, condition: item.condition, source: item.source, purchaseUrl: item.url, imageUrl: item.imageUrl})}
           style={styles.linkBtn}>
           <Text style={styles.linkText}>View details →</Text>
         </TouchableOpacity>
@@ -449,10 +459,17 @@ const CustomizationScreen = () => {
           </View>
 
           {partsSource !== '' && parts.length > 0 && (
-            <Text style={styles.sourceLabel}>
-              Source: {partsSource === 'ebay' ? 'eBay' : 'AliExpress'} ·{' '}
-              {parts.length} results
-            </Text>
+            <>
+              <Text style={styles.sourceLabel}>
+                Source: {partsSource === 'ebay' ? 'eBay' : 'AliExpress'} ·{' '}
+                {parts.length} results
+              </Text>
+              {optimizedQuery ? (
+                <Text style={styles.optimizedQueryLabel} numberOfLines={2}>
+                  Searched: "{optimizedQuery}"
+                </Text>
+              ) : null}
+            </>
           )}
 
           {partsError !== '' && (

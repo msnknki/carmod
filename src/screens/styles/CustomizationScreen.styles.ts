@@ -85,7 +85,13 @@ export default StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.sm,
     marginTop: spacing.sm,
+    marginBottom: 2,
+  },
+  optimizedQueryLabel: {
+    color: colors.textSecondary,
+    fontSize: 10,
     marginBottom: 4,
+    fontStyle: 'italic',
   },
   errorText: {
     color: colors.danger,
@@ -122,10 +128,25 @@ export default StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  cardImage: {
+    width: '100%',
+    height: 160,
+    backgroundColor: colors.surfaceLight,
+  },
+  cardImagePlaceholder: {
+    width: '100%',
+    height: 160,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardImagePlaceholderText: {
+    fontSize: 40,
   },
   cardSelected: {
     borderColor: colors.accent,
@@ -136,6 +157,8 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
   partTitle: {
     color: colors.text,
@@ -158,6 +181,7 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   price: {
     color: colors.accent,
@@ -176,6 +200,8 @@ export default StyleSheet.create({
   },
   linkBtn: {
     marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
   linkText: {
     color: colors.primaryLight,

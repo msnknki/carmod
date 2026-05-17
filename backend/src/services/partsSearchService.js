@@ -20,21 +20,26 @@ async function searchEbay(query, limit = 10) {
         'categoryId': '6030',
         'paginationInput.entriesPerPage': limit,
         'outputSelector': 'GalleryInfo',
+        'sortOrder': 'BestMatch',
       },
     });
 
     const items = res.data?.findItemsByKeywordsResponse?.[0]?.searchResult?.[0]?.item || [];
-    return items.map(item => ({
-      id: item.itemId?.[0],
-      name: item.title?.[0],
-      price: parseFloat(item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ || 0),
-      currency: item.sellingStatus?.[0]?.currentPrice?.[0]?.['@currencyId'] || 'USD',
-      imageUrl: item.galleryURL?.[0] || '',
-      purchaseUrl: item.viewItemURL?.[0],
-      condition: item.condition?.[0]?.conditionDisplayName?.[0] || 'Used',
-      source: 'ebay',
-      sellerLocation: item.location?.[0] || '',
-    }));
+    return items.map(item => {
+      const thumbUrl = item.galleryURL?.[0] || '';
+      const imageUrl = thumbUrl.replace('s-l140.', 's-l500.');
+      return {
+        id: item.itemId?.[0],
+        name: item.title?.[0],
+        price: parseFloat(item.sellingStatus?.[0]?.currentPrice?.[0]?.__value__ || 0),
+        currency: item.sellingStatus?.[0]?.currentPrice?.[0]?.['@currencyId'] || 'USD',
+        imageUrl,
+        purchaseUrl: item.viewItemURL?.[0],
+        condition: item.condition?.[0]?.conditionDisplayName?.[0] || 'Used',
+        source: 'ebay',
+        sellerLocation: item.location?.[0] || '',
+      };
+    });
   } catch (err) {
     console.error('eBay API error:', err.message);
     return getMockResults(query, 'ebay');

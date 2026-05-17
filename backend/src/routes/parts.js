@@ -17,12 +17,15 @@ router.post('/search', auth, async (req, res, next) => {
 
     // Use Gemini to generate an optimized search query
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    const prompt = `Convert this car parts search request into an optimized product search query. Return ONLY the search query text, nothing else.
+    const prompt = `Convert this car parts search into a short eBay search query (max 6 words). Focus on part type and car compatibility. Return ONLY the query, nothing else.
 
 User request: "${query}"
 ${carMake ? `Car: ${carYear || ''} ${carMake} ${carModel || ''}`.trim() : ''}
 
-Example: "I want sporty rims" for a 2015 BMW 320i → "aftermarket sport alloy rims wheels 18 inch BMW 3 series F30 2015"`;
+Examples:
+"I want sporty rims" for 2015 BMW 320i → "BMW 320i sport alloy wheels"
+"aggressive headlights" for 2003 BMW 540i → "BMW 540i E39 headlights"
+"black rims" for 2003 BMW 540i → "BMW E39 black alloy wheels"`;
 
     let optimizedQuery = query;
     try {
@@ -34,10 +37,19 @@ Example: "I want sporty rims" for a 2015 BMW 320i → "aftermarket sport alloy r
 
     const parts = await searchParts(optimizedQuery, countryCode || 'US');
 
+    // Filter out results where none of the original search words appear in the title
+    const searchWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const relevant = parts.filter(p => {
+      const title = (p.name || '').toLowerCase();
+      return searchWords.some(w => title.includes(w));
+    });
+
+    const results = relevant.length > 0 ? relevant : parts;
+
     res.json({
       query: optimizedQuery,
-      source: parts.length > 0 ? parts[0].source : (source || 'ebay'),
-      results: parts,
+      source: results.length > 0 ? results[0].source : (source || 'ebay'),
+      results,
     });
   } catch (err) {
     next(err);
