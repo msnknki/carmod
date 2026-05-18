@@ -89,6 +89,24 @@ const TRENDING_MODS = [
 
 type Tab = 'parts' | 'shops' | 'preview';
 
+const getSourceLabel = (source: string) => {
+  switch (source) {
+    case 'ebay': return 'eBay';
+    case 'aliexpress': return 'AliExpress';
+    case 'serper': return 'Google';
+    default: return source.charAt(0).toUpperCase() + source.slice(1);
+  }
+};
+
+const getSourceColor = (source: string) => {
+  switch (source) {
+    case 'ebay': return '#e53e3e';
+    case 'aliexpress': return '#dd6b20';
+    case 'serper': return '#1a73e8';
+    default: return '#718096';
+  }
+};
+
 const CustomizationScreen = () => {
   const route = useRoute<RouteProp<RootTabParamList, 'Customization'>>();
   const {selectedCar} = useCar();
@@ -372,13 +390,10 @@ const CustomizationScreen = () => {
           <View
             style={[
               styles.sourceBadge,
-              {
-                backgroundColor:
-                  item.source === 'ebay' ? '#e53e3e' : '#dd6b20',
-              },
+              {backgroundColor: getSourceColor(item.source)},
             ]}>
             <Text style={styles.sourceBadgeText}>
-              {item.source === 'ebay' ? 'eBay' : 'AliExpress'}
+              {getSourceLabel(item.source)}
             </Text>
           </View>
         </View>
@@ -510,8 +525,7 @@ const CustomizationScreen = () => {
           {partsSource !== '' && parts.length > 0 && (
             <>
               <Text style={styles.sourceLabel}>
-                Source: {partsSource === 'ebay' ? 'eBay' : 'AliExpress'} ·{' '}
-                {parts.length} results
+                Source: {getSourceLabel(partsSource)} · {parts.length} results
               </Text>
               {optimizedQuery ? (
                 <Text style={styles.optimizedQueryLabel} numberOfLines={2}>
@@ -764,7 +778,7 @@ const CustomizationScreen = () => {
               )}
               <View style={styles.detailBody}>
                 <View style={styles.detailSourceRow}>
-                  <Text style={styles.detailSource}>{detailPart.source}</Text>
+                  <Text style={styles.detailSource}>{getSourceLabel(detailPart.source)}</Text>
                   <Text style={styles.detailCondition}>{detailPart.condition}</Text>
                 </View>
                 <Text style={styles.detailName}>{detailPart.name}</Text>
@@ -777,7 +791,7 @@ const CustomizationScreen = () => {
                 <TouchableOpacity
                   style={styles.detailBuyBtn}
                   onPress={() => { Linking.openURL(detailPart.purchaseUrl); setDetailPart(null); }}>
-                  <Text style={styles.detailBuyBtnText}>Buy on {detailPart.source === 'ebay' ? 'eBay' : 'AliExpress'} →</Text>
+                  <Text style={styles.detailBuyBtnText}>Buy on {getSourceLabel(detailPart.source)} →</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.detailCloseBtn} onPress={() => setDetailPart(null)}>
                   <Text style={styles.detailCloseBtnText}>Close</Text>

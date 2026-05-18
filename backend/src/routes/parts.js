@@ -40,7 +40,7 @@ Examples:
     // Filter out results where none of the original search words appear in the title
     const searchWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     const relevant = parts.filter(p => {
-      const title = (p.name || '').toLowerCase();
+      const title = (p.title || '').toLowerCase();
       return searchWords.some(w => title.includes(w));
     });
 
@@ -48,7 +48,7 @@ Examples:
 
     res.json({
       query: optimizedQuery,
-      source: results.length > 0 ? results[0].source : (source || 'ebay'),
+      source: results.length > 0 ? results[0].source : 'serper',
       results,
     });
   } catch (err) {
