@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Alert,
   Linking,
   Image,
   ScrollView,
@@ -15,6 +16,7 @@ import {
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRoute, RouteProp} from '@react-navigation/native';
+import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import {colors} from '../theme';
 import styles from './styles/CustomizationScreen.styles';
 import {useCar} from '../context/CarContext';
@@ -116,6 +118,7 @@ const CustomizationScreen = () => {
   const [query, setQuery] = useState('');
   const [parts, setParts] = useState<PartResult[]>([]);
   const [selectedParts, setSelectedParts] = useState<Set<string>>(new Set());
+  const [buildParts, setBuildParts] = useState<PartResult[]>([]);
   const [partsLoading, setPartsLoading] = useState(false);
   const [partsError, setPartsError] = useState('');
   const [partsSource, setPartsSource] = useState('');
@@ -132,6 +135,12 @@ const CustomizationScreen = () => {
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState('');
   const [imageStatus, setImageStatus] = useState('');
+  const [previewImageUri, setPreviewImageUri] = useState<string | undefined>();
+  const [refinementText, setRefinementText] = useState('');
+  const [refinementHistory, setRefinementHistory] = useState<string[]>([]);
+
+  // Build modal state
+  const [buildModalOpen, setBuildModalOpen] = useState(false);
 
   // Cost estimate state
   const [estimateLoading, setEstimateLoading] = useState(false);
@@ -159,7 +168,7 @@ const CustomizationScreen = () => {
     setPartsLoading(true);
     setPartsError('');
     try {
-      const body: Record<string, string> = {query: q};
+      const body: Record<string, string> = {query: q, countryCode: country};
       if (selectedCar) {
         body.carMake = selectedCar.make;
         body.carModel = selectedCar.model;
@@ -207,7 +216,7 @@ const CustomizationScreen = () => {
   }, [route.params?.tab]);
 
   const getEstimate = async () => {
-    const chosen = parts.filter(p => selectedParts.has(p.id));
+    const chosen = buildParts;
     if (chosen.length === 0) {
       return;
     }
@@ -247,6 +256,26 @@ const CustomizationScreen = () => {
     }
   };
 
+  const pickPreviewImage = () => {
+    Alert.alert('Car Photo', 'Choose a photo for this preview', [
+      {
+        text: 'Camera',
+        onPress: () =>
+          launchCamera({mediaType: 'photo', quality: 0.7}, res => {
+            if (res.assets?.[0]?.uri) setPreviewImageUri(res.assets[0].uri);
+          }),
+      },
+      {
+        text: 'Photo Library',
+        onPress: () =>
+          launchImageLibrary({mediaType: 'photo', quality: 0.7}, res => {
+            if (res.assets?.[0]?.uri) setPreviewImageUri(res.assets[0].uri);
+          }),
+      },
+      {text: 'Cancel', style: 'cancel'},
+    ]);
+  };
+
   const generatePreview = async () => {
     if (!selectedCar) {
       setImageError('Select a car on the Home tab first');
@@ -256,13 +285,15 @@ const CustomizationScreen = () => {
     setImageError('');
     setImageStatus('Generating preview — this may take up to 60 seconds...');
     setGeneratedImageUrl(null);
+    setRefinementHistory([]);
     try {
-      const chosenParts = parts.filter(p => selectedParts.has(p.id));
+      const chosenParts = buildParts;
 
       let carImageUrl: string | undefined;
-      if (selectedCar.imageUri) {
+      const imageSource = previewImageUri || selectedCar.imageUri;
+      if (imageSource) {
         setImageStatus('Processing car photo...');
-        carImageUrl = (await uriToBase64DataUrl(selectedCar.imageUri)) ?? undefined;
+        carImageUrl = (await uriToBase64DataUrl(imageSource)) ?? undefined;
       }
 
       const data = await api.post('/image/generate', {
@@ -288,13 +319,46 @@ const CustomizationScreen = () => {
     }
   };
 
+  const refinePreview = async () => {
+    if (!generatedImageUrl || !refinementText.trim() || imageLoading) return;
+
+    const fix = refinementText.trim();
+    setImageLoading(true);
+    setImageError('');
+    setImageStatus('Applying fix...');
+
+    try {
+      const data = await api.post('/image/generate', {
+        carMake: selectedCar?.make,
+        carModel: selectedCar?.model,
+        carYear: String(selectedCar?.year),
+        parts: [],
+        description: `${fix}. Keep everything else exactly the same.`,
+        imageUrl: generatedImageUrl,
+      });
+      if (data.status === 'succeeded' && data.imageUrl) {
+        setGeneratedImageUrl(data.imageUrl);
+        setRefinementHistory(prev => [...prev, fix]);
+        setRefinementText('');
+        setImageStatus('Fix applied!');
+      }
+    } catch (err: any) {
+      setImageError(err.message || 'Refinement failed');
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
   const togglePart = (id: string) => {
     setSelectedParts(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
+        setBuildParts(bp => bp.filter(p => p.id !== id));
       } else {
         next.add(id);
+        const part = parts.find(p => p.id === id);
+        if (part) setBuildParts(bp => [...bp, part]);
       }
       return next;
     });
@@ -315,6 +379,10 @@ const CustomizationScreen = () => {
       return [mapped, ...prev];
     });
     setSelectedParts(prev => new Set([...prev, mapped.id]));
+    setBuildParts(prev => {
+      if (prev.find(p => p.id === mapped.id)) return prev;
+      return [...prev, mapped];
+    });
     setChatOpen(false);
     setActiveTab('parts');
   };
@@ -365,9 +433,7 @@ const CustomizationScreen = () => {
     }
   };
 
-  const totalCost = parts
-    .filter(p => selectedParts.has(p.id))
-    .reduce((sum, p) => sum + p.price, 0);
+  const totalCost = buildParts.reduce((sum, p) => sum + p.price, 0);
 
   const renderPartItem = ({item}: {item: PartResult}) => {
     const selected = selectedParts.has(item.id);
@@ -601,6 +667,50 @@ const CustomizationScreen = () => {
               />
               {selectedParts.size > 0 && (
                 <View>
+                  {/* Selected parts tray */}
+                  <View style={styles.cartTray}>
+                    <View style={styles.cartTrayHeader}>
+                      <Text style={styles.cartTrayTitle}>
+                        Build ({selectedParts.size})
+                      </Text>
+                      <Text style={styles.cartTrayTotal}>
+                        ${totalCost.toFixed(2)}
+                      </Text>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.cartTrayScroll}>
+                      {buildParts.map(p => (
+                        <View key={p.id} style={styles.cartCard}>
+                          {p.imageUrl ? (
+                            <Image
+                              source={{uri: p.imageUrl}}
+                              style={styles.cartCardImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={[styles.cartCardImage, styles.cartCardImagePlaceholder]}>
+                              <AppIcon name="wrench" size={18} color={colors.textMuted} />
+                            </View>
+                          )}
+                          <View style={styles.cartCardInfo}>
+                            <Text style={styles.cartCardName} numberOfLines={2}>
+                              {p.title}
+                            </Text>
+                            <Text style={styles.cartCardPrice}>
+                              ${p.price.toFixed(0)}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.cartCardRemove}
+                            onPress={() => togglePart(p.id)}>
+                            <AppIcon name="close-circle" size={18} color={colors.textMuted} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
                   <View style={styles.totalBar}>
                     <Text style={styles.totalText}>
                       {selectedParts.size} part
@@ -691,36 +801,53 @@ const CustomizationScreen = () => {
         <ScrollView style={styles.content} contentContainerStyle={styles.previewContent}>
           <Text style={styles.previewHeading}>AI Mod Preview</Text>
 
-          {/* Selected parts cart */}
+          {/* Selected parts summary — taps to open modal */}
           {selectedParts.size > 0 ? (
-            <View style={styles.previewCart}>
-              <Text style={styles.previewCartTitle}>
-                Parts in your build ({selectedParts.size})
-              </Text>
-              {parts.filter(p => selectedParts.has(p.id)).map(p => (
-                <View key={p.id} style={styles.previewCartItem}>
-                  <Text style={styles.previewCartBullet}>•</Text>
-                  <Text style={styles.previewCartName} numberOfLines={1}>{p.title}</Text>
-                  <Text style={styles.previewCartPrice}>${p.price.toFixed(0)}</Text>
+            <TouchableOpacity style={styles.previewCart} onPress={() => setBuildModalOpen(true)} activeOpacity={0.75}>
+              <View style={styles.previewCartRow}>
+                <View style={styles.previewCartIconWrap}>
+                  <AppIcon name="wrench" size={18} color={colors.primary} />
                 </View>
-              ))}
-              <Text style={styles.previewCartHint}>These parts will be included in the generated image</Text>
-            </View>
+                <View style={styles.previewCartMeta}>
+                  <Text style={styles.previewCartTitle}>
+                    Parts in your build ({selectedParts.size})
+                  </Text>
+                  <Text style={styles.previewCartPrice}>
+                    Total: ${totalCost.toFixed(2)}
+                  </Text>
+                </View>
+                <AppIcon name="chevron-right" size={20} color={colors.textMuted} />
+              </View>
+              <Text style={styles.previewCartHint}>Tap to view or remove parts</Text>
+            </TouchableOpacity>
           ) : (
             <Text style={styles.previewSubtext}>
               Select parts in the Online Parts tab or via the AI assistant, then generate a preview
             </Text>
           )}
 
-          <TextInput
-            style={styles.descInput}
-            placeholder="Describe your mods (e.g. matte black wrap, lowered suspension)"
-            placeholderTextColor={colors.textSecondary}
-            value={imageDescription}
-            onChangeText={setImageDescription}
-            multiline
-            numberOfLines={3}
-          />
+          <View style={styles.descRow}>
+            <TouchableOpacity style={styles.descAttachBtn} onPress={pickPreviewImage}>
+              {previewImageUri || selectedCar?.imageUri ? (
+                <Image
+                  source={{uri: previewImageUri || selectedCar?.imageUri}}
+                  style={styles.descAttachThumb}
+                  resizeMode="cover"
+                />
+              ) : (
+                <AppIcon name="camera-plus-outline" size={22} color={colors.textMuted} />
+              )}
+            </TouchableOpacity>
+            <TextInput
+              style={[styles.descInput, styles.descInputFlex]}
+              placeholder="Describe your mods (e.g. matte black wrap, lowered suspension)"
+              placeholderTextColor={colors.textSecondary}
+              value={imageDescription}
+              onChangeText={setImageDescription}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
 
           <TouchableOpacity
             style={[
@@ -757,6 +884,41 @@ const CustomizationScreen = () => {
             </View>
           )}
 
+          {generatedImageUrl && (
+            <View style={styles.refineSection}>
+              <Text style={styles.refineTitle}>Refine this preview</Text>
+              {refinementHistory.length > 0 && (
+                <View style={styles.refineHistory}>
+                  {refinementHistory.map((r, i) => (
+                    <Text key={i} style={styles.refineHistoryItem}>✓ {r}</Text>
+                  ))}
+                </View>
+              )}
+              <TextInput
+                style={styles.descInput}
+                placeholder="What needs fixing? (e.g. change color to dark blue, make wheels gold)"
+                placeholderTextColor={colors.textSecondary}
+                value={refinementText}
+                onChangeText={setRefinementText}
+                multiline
+              />
+              <TouchableOpacity
+                style={[
+                  styles.generateBtn,
+                  styles.refineBtn,
+                  (!refinementText.trim() || imageLoading) && styles.generateBtnDisabled,
+                ]}
+                onPress={refinePreview}
+                disabled={!refinementText.trim() || imageLoading}>
+                {imageLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.generateBtnText}>Apply Fix</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
           {!selectedCar && (
             <Text style={styles.emptyHint}>
               Tip: Select a car on the Home tab to get accurate previews
@@ -764,6 +926,53 @@ const CustomizationScreen = () => {
           )}
         </ScrollView>
       )}
+      {/* Build Parts Modal */}
+      <Modal visible={buildModalOpen} animationType="slide" transparent onRequestClose={() => setBuildModalOpen(false)}>
+        <View style={styles.detailOverlay}>
+          <View style={styles.buildPanel}>
+            <View style={styles.buildModalHeader}>
+              <Text style={styles.buildModalTitle}>Parts in your build</Text>
+              <TouchableOpacity onPress={() => setBuildModalOpen(false)} style={styles.chatCloseBtn}>
+                <AppIcon name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.buildModalList} showsVerticalScrollIndicator={false}>
+              {buildParts.map(p => (
+                <View key={p.id} style={styles.buildModalItem}>
+                  {p.imageUrl ? (
+                    <Image source={{uri: p.imageUrl}} style={styles.buildModalThumb} resizeMode="cover" />
+                  ) : (
+                    <View style={[styles.buildModalThumb, styles.buildModalThumbPlaceholder]}>
+                      <AppIcon name="wrench" size={20} color={colors.textMuted} />
+                    </View>
+                  )}
+                  <View style={styles.buildModalInfo}>
+                    <Text style={styles.buildModalItemName} numberOfLines={2}>{p.title}</Text>
+                    <View style={styles.buildModalItemMeta}>
+                      <View style={[styles.sourceBadge, {backgroundColor: getSourceColor(p.source)}]}>
+                        <Text style={styles.sourceBadgeText}>{getSourceLabel(p.source)}</Text>
+                      </View>
+                      <Text style={styles.buildModalItemPrice}>${p.price.toFixed(2)}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={styles.buildModalRemove} onPress={() => togglePart(p.id)}>
+                    <AppIcon name="trash-can-outline" size={22} color={colors.danger} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.buildModalFooter}>
+              <Text style={styles.buildModalTotal}>
+                {selectedParts.size} part{selectedParts.size !== 1 ? 's' : ''} · ${totalCost.toFixed(2)}
+              </Text>
+              <TouchableOpacity style={styles.buildModalCloseBtn} onPress={() => setBuildModalOpen(false)}>
+                <Text style={styles.buildModalCloseBtnText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Part Detail Modal */}
       {detailPart && (
         <Modal visible animationType="slide" transparent onRequestClose={() => setDetailPart(null)}>

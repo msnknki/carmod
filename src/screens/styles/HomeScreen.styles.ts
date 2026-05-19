@@ -48,6 +48,17 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroImageEditBtn: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroOverlay: {
     padding: spacing.lg,
     borderTopWidth: 1,

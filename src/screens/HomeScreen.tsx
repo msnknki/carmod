@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Image,
+  TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
@@ -60,12 +61,37 @@ const QUICK_ACTIONS = [
 const HomeScreen = () => {
   const navigation =
     useNavigation<BottomTabNavigationProp<RootTabParamList>>();
-  const {cars, selectedCar, addCar, removeCar, selectCar} = useCar();
+  const {cars, selectedCar, addCar, removeCar, selectCar, updateCarImage} = useCar();
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
   const [imageUri, setImageUri] = useState<string | undefined>();
   const [showForm, setShowForm] = useState(false);
+
+  const pickHeroImage = () => {
+    if (!selectedCar) return;
+    Alert.alert('Car Photo', 'Choose a photo of your car', [
+      {
+        text: 'Camera',
+        onPress: () =>
+          launchCamera({mediaType: 'photo', quality: 0.7}, res => {
+            if (res.assets?.[0]?.uri) {
+              updateCarImage(selectedCar.id, res.assets[0].uri);
+            }
+          }),
+      },
+      {
+        text: 'Photo Library',
+        onPress: () =>
+          launchImageLibrary({mediaType: 'photo', quality: 0.7}, res => {
+            if (res.assets?.[0]?.uri) {
+              updateCarImage(selectedCar.id, res.assets[0].uri);
+            }
+          }),
+      },
+      {text: 'Cancel', style: 'cancel'},
+    ]);
+  };
 
   const pickImage = () => {
     Alert.alert('Add Photo', 'Choose a photo of your car', [
@@ -153,16 +179,21 @@ const HomeScreen = () => {
 
           {selectedCar ? (
             <View style={styles.heroCard}>
-              {selectedCar.imageUri ? (
-                <Image
-                  source={{uri: selectedCar.imageUri}}
-                  style={styles.heroImage}
-                />
-              ) : (
-                <View style={styles.heroImagePlaceholder}>
-                  <AppIcon name="car-sports" size={56} color={colors.textMuted} />
+              <TouchableOpacity onPress={pickHeroImage} activeOpacity={0.85}>
+                {selectedCar.imageUri ? (
+                  <Image
+                    source={{uri: selectedCar.imageUri}}
+                    style={styles.heroImage}
+                  />
+                ) : (
+                  <View style={styles.heroImagePlaceholder}>
+                    <AppIcon name="car-sports" size={56} color={colors.textMuted} />
+                  </View>
+                )}
+                <View style={styles.heroImageEditBtn}>
+                  <AppIcon name="camera-plus-outline" size={16} color="#fff" />
                 </View>
-              )}
+              </TouchableOpacity>
               <View style={styles.heroOverlay}>
                 <Text style={styles.heroLabel}>Active vehicle</Text>
                 <Text style={styles.heroCarName}>

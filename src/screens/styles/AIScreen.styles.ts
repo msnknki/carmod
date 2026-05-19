@@ -332,4 +332,36 @@ export default StyleSheet.create({
     ...shadows.glow,
   },
   sendDisabled: {opacity: 0.45},
+  attachBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachPreviewRow: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
+  },
+  attachThumbWrap: {
+    position: 'relative',
+    alignSelf: 'flex-start',
+  },
+  attachThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.md,
+  },
+  attachRemoveBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+  },
+  msgImage: {
+    width: 200,
+    height: 140,
+    borderRadius: radius.sm,
+    marginBottom: spacing.xs,
+  },
 });

@@ -32,6 +32,15 @@ router.post('/', auth, (req, res) => {
   });
 });
 
+// PATCH /api/cars/:id — update car image
+router.patch('/:id', auth, (req, res) => {
+  const { imageUri } = req.body;
+  const car = db.prepare('SELECT * FROM cars WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+  if (!car) return res.status(404).json({ error: 'Car not found' });
+  db.prepare('UPDATE cars SET image_uri = ? WHERE id = ?').run(imageUri ?? null, req.params.id);
+  res.json({ id: req.params.id, image_uri: imageUri ?? null });
+});
+
 // DELETE /api/cars/:id — delete a car
 router.delete('/:id', auth, (req, res) => {
   const car = db.prepare('SELECT * FROM cars WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);

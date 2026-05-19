@@ -93,6 +93,14 @@ export const api = {
     });
   },
 
+  async patch(endpoint: string, body: object) {
+    return request(`${API_BASE}${endpoint}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+    });
+  },
+
   async del(endpoint: string) {
     return request(`${API_BASE}${endpoint}`, {
       method: 'DELETE',

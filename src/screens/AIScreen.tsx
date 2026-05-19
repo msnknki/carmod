@@ -12,7 +12,9 @@ import {
   Linking,
   Image,
   Modal,
+  Alert,
 } from 'react-native';
+import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {colors} from '../theme';
 import styles from './styles/AIScreen.styles';
@@ -37,6 +39,7 @@ type Message = {
   role: 'user' | 'ai';
   content: string;
   parts?: Part[];
+  imageUri?: string;
 };
 
 const COUNTRIES = [
@@ -63,7 +66,43 @@ const AIScreen = () => {
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [country, setCountry] = useState('LB');
   const [detailPart, setDetailPart] = useState<Part | null>(null);
+  const [attachedImageUri, setAttachedImageUri] = useState<string | undefined>();
   const flatListRef = useRef<FlatList>(null);
+
+  const pickAttachImage = () => {
+    Alert.alert('Attach Photo', 'Send a photo with your message', [
+      {
+        text: 'Camera',
+        onPress: () =>
+          launchCamera({mediaType: 'photo', quality: 0.6}, res => {
+            if (res.assets?.[0]?.uri) setAttachedImageUri(res.assets[0].uri);
+          }),
+      },
+      {
+        text: 'Photo Library',
+        onPress: () =>
+          launchImageLibrary({mediaType: 'photo', quality: 0.6}, res => {
+            if (res.assets?.[0]?.uri) setAttachedImageUri(res.assets[0].uri);
+          }),
+      },
+      {text: 'Cancel', style: 'cancel'},
+    ]);
+  };
+
+  const uriToBase64DataUrl = async (uri: string): Promise<string | null> => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
 
   const sendMessage = async (textOverride?: string) => {
     const text = (textOverride ?? input).trim();
@@ -71,22 +110,31 @@ const AIScreen = () => {
       return;
     }
 
+    const imageUri = attachedImageUri;
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: text,
+      imageUri,
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    setAttachedImageUri(undefined);
     setLoading(true);
 
     try {
+      let imageData: string | null = null;
+      if (imageUri) {
+        imageData = await uriToBase64DataUrl(imageUri);
+      }
+
       const res = await api.post('/chat', {
         message: text,
         conversationId,
         carId: selectedCar?.id,
         countryCode: country,
+        imageData: imageData || undefined,
       });
 
       if (res.conversationId && !conversationId) {
@@ -153,6 +201,9 @@ const AIScreen = () => {
           <Text style={[styles.roleLabel, isUser && styles.userRoleLabel]}>
             {isUser ? 'You' : 'CarMod AI'}
           </Text>
+          {item.imageUri && (
+            <Image source={{uri: item.imageUri}} style={styles.msgImage} resizeMode="cover" />
+          )}
           <Text style={[styles.messageText, isUser && styles.userMessageText]}>
             {item.content}
           </Text>
@@ -262,7 +313,22 @@ const AIScreen = () => {
           </View>
         )}
 
+        {attachedImageUri && (
+          <View style={styles.attachPreviewRow}>
+            <View style={styles.attachThumbWrap}>
+              <Image source={{uri: attachedImageUri}} style={styles.attachThumb} resizeMode="cover" />
+              <TouchableOpacity
+                style={styles.attachRemoveBtn}
+                onPress={() => setAttachedImageUri(undefined)}>
+                <AppIcon name="close-circle" size={18} color={colors.danger} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         <View style={styles.inputBar}>
+          <TouchableOpacity style={styles.attachBtn} onPress={pickAttachImage} disabled={loading}>
+            <AppIcon name="image-plus" size={22} color={attachedImageUri ? colors.primary : colors.textMuted} />
+          </TouchableOpacity>
           <TextInput
             style={styles.input}
             placeholder="Ask about your car..."

@@ -34,23 +34,23 @@ const PressableScale = ({
   };
 
   return (
-    <Pressable
-      {...rest}
-      disabled={disabled}
-      onPressIn={e => {
-        if (!disabled) {
-          animateTo(scaleTo);
-        }
-        onPressIn?.(e);
-      }}
-      onPressOut={e => {
-        animateTo(1);
-        onPressOut?.(e);
-      }}>
-      <Animated.View style={[style, {transform: [{scale}]}]}>
+    <Animated.View style={[style, {transform: [{scale}]}]}>
+      <Pressable
+        {...rest}
+        disabled={disabled}
+        onPressIn={e => {
+          if (!disabled) {
+            animateTo(scaleTo);
+          }
+          onPressIn?.(e);
+        }}
+        onPressOut={e => {
+          animateTo(1);
+          onPressOut?.(e);
+        }}>
         {children}
-      </Animated.View>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 };
 

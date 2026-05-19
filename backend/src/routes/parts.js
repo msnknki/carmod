@@ -17,31 +17,38 @@ router.post('/search', auth, async (req, res, next) => {
 
     // Use Gemini to generate an optimized search query
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    const prompt = `Convert this car parts search into a short eBay search query (max 6 words). Focus on part type and car compatibility. Return ONLY the query, nothing else.
+    const prompt = `Convert this car parts search into a specific search query (max 8 words). ALWAYS include the exact year AND chassis code when known. Return ONLY the query, nothing else.
 
 User request: "${query}"
 ${carMake ? `Car: ${carYear || ''} ${carMake} ${carModel || ''}`.trim() : ''}
 
-Examples:
-"I want sporty rims" for 2015 BMW 320i → "BMW 320i sport alloy wheels"
-"aggressive headlights" for 2003 BMW 540i → "BMW 540i E39 headlights"
-"black rims" for 2003 BMW 540i → "BMW E39 black alloy wheels"`;
+Rules:
+- Always include year + make + model/chassis code
+- Use chassis codes for BMW (E39, E46, F30...), Mercedes (W211, W204...), etc.
+- Year is critical — include it to avoid returning results for newer models
 
-    let optimizedQuery = query;
+Examples:
+"headlights" for 2003 BMW 540i → "2003 BMW 540i E39 headlights"
+"black rims" for 2003 BMW 540i → "2003 BMW E39 black alloy wheels"
+"sport rims" for 2015 BMW 320i → "2015 BMW 320i F30 sport alloy wheels"
+"brake pads" for 2020 Toyota Camry → "2020 Toyota Camry brake pads"
+"exhaust" for 2003 BMW 540i → "BMW E39 540i performance exhaust"`;
+
+    let optimizedQuery = carMake ? `${carYear || ''} ${carMake} ${carModel || ''} ${query}`.trim() : query;
     try {
       const result = await model.generateContent(prompt);
       optimizedQuery = result.response.text().trim().replace(/^["']|["']$/g, '');
     } catch {
-      // Fall back to original query if Gemini fails
+      // Gemini failed — use car-prefixed query as fallback
     }
 
     const parts = await searchParts(optimizedQuery, countryCode || 'US');
 
-    // Filter out results where none of the original search words appear in the title
-    const searchWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    // Filter using optimized query words (which include car make/model) so generic parts are excluded
+    const filterWords = optimizedQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     const relevant = parts.filter(p => {
       const title = (p.title || '').toLowerCase();
-      return searchWords.some(w => title.includes(w));
+      return filterWords.some(w => title.includes(w));
     });
 
     const results = relevant.length > 0 ? relevant : parts;

@@ -21,7 +21,7 @@ const router = express.Router();
 // POST /api/chat — send a message and get AI response
 router.post('/', auth, async (req, res, next) => {
   try {
-    const { message, conversationId, carId, countryCode } = req.body;
+    const { message, conversationId, carId, countryCode, imageData } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -69,7 +69,7 @@ router.post('/', auth, async (req, res, next) => {
       : Promise.resolve([]);
 
     const [aiResponse, parts] = await Promise.all([
-      geminiService.sendMessage(message, carContext, previousHistory),
+      geminiService.sendMessage(message, carContext, previousHistory, imageData || null),
       partsPromise,
     ]);
 

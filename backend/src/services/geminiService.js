@@ -28,7 +28,7 @@ Rules:
 - Tailor advice to the user's exact car when provided.
 - If the question is vague, ask one clarifying question.`;
 
-async function sendMessage(message, carContext, conversationHistory = []) {
+async function sendMessage(message, carContext, conversationHistory = [], imageDataUrl = null) {
   const model = genAI.getGenerativeModel({ model: MODEL });
 
   const carInfo = carContext
@@ -50,7 +50,17 @@ async function sendMessage(message, carContext, conversationHistory = []) {
     : message;
 
   return withRetry(async () => {
-    const result = await chat.sendMessage(fullPrompt);
+    let msgParts;
+    if (imageDataUrl) {
+      const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        msgParts = [
+          { inlineData: { mimeType: match[1], data: match[2] } },
+          { text: fullPrompt },
+        ];
+      }
+    }
+    const result = await chat.sendMessage(msgParts ?? fullPrompt);
     return result.response.text();
   });
 }

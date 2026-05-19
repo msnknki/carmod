@@ -34,6 +34,9 @@ import {
   X,
   Cog,
   Wind,
+  Trash2,
+  ChevronRight,
+  XCircle,
 } from 'lucide-react-native';
 import {colors} from '../../theme';
 
@@ -71,6 +74,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'storefront-outline': Store,
   star: Star,
   close: X,
+  'trash-can-outline': Trash2,
+  'chevron-right': ChevronRight,
+  'close-circle': XCircle,
   'chat-outline': MessageCircle,
   tire: Circle,
   pipe: Wind,
