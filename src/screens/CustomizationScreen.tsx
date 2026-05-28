@@ -25,6 +25,7 @@ import {getMarket} from '../data/markets';
 import {api} from '../services/api';
 import AppIcon from '../components/ui/AppIcon';
 import PressableScale from '../components/ui/PressableScale';
+import CarSelector from '../components/CarSelector';
 import MarketSelector from '../components/MarketSelector';
 import type {RootTabParamList} from '../types';
 
@@ -50,6 +51,10 @@ type ShopResult = {
   latitude?: number;
   longitude?: number;
   mapsUrl?: string;
+  imageUrl?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  hoursSummary?: string | null;
 };
 
 type AIPart = {
@@ -107,6 +112,17 @@ const getSourceColor = (source: string) => {
   }
 };
 
+const formatPartPrice = (price: number, currency: string) => {
+  const symbols: Record<string, string> = {
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    AED: 'AED ',
+  };
+  const sym = symbols[currency] || `${currency} `;
+  return `${sym}${price.toFixed(2)}`;
+};
+
 const CustomizationScreen = () => {
   const route = useRoute<RouteProp<RootTabParamList, 'Customization'>>();
   const {selectedCar} = useCar();
@@ -121,7 +137,10 @@ const CustomizationScreen = () => {
   const [partsLoading, setPartsLoading] = useState(false);
   const [partsError, setPartsError] = useState('');
   const [partsSource, setPartsSource] = useState('');
+  const [partsDiagnostic, setPartsDiagnostic] = useState('');
   const [optimizedQuery, setOptimizedQuery] = useState('');
+  const [partsMarketLabel, setPartsMarketLabel] = useState('');
+  const lastPartsQueryRef = useRef('');
 
   // Shops state
   const [shops, setShops] = useState<ShopResult[]>([]);
@@ -163,8 +182,10 @@ const CustomizationScreen = () => {
     if (searchQuery) {
       setQuery(searchQuery);
     }
+    lastPartsQueryRef.current = q;
     setPartsLoading(true);
     setPartsError('');
+    setPartsDiagnostic('');
     try {
       const body: Record<string, string> = {query: q, countryCode};
       if (selectedCar) {
@@ -176,6 +197,13 @@ const CustomizationScreen = () => {
       setParts(data.results || []);
       setPartsSource(data.source || '');
       setOptimizedQuery(data.query || '');
+      setPartsMarketLabel(data.marketLabel || getMarket(countryCode).label);
+      if (data.mockFallback) {
+        setPartsDiagnostic(
+          data.diagnostic ||
+            'Sample parts only — configure SERPER_API_KEY on the server for real Google Shopping results.',
+        );
+      }
     } catch (err: any) {
       setPartsError(err.message || 'Search failed');
     } finally {
@@ -220,6 +248,12 @@ const CustomizationScreen = () => {
       searchShops();
     }
   }, [countryCode, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'parts' && lastPartsQueryRef.current) {
+      searchParts(lastPartsQueryRef.current);
+    }
+  }, [countryCode]);
 
   const getEstimate = async () => {
     const chosen = buildParts;
@@ -471,7 +505,7 @@ const CustomizationScreen = () => {
         </View>
         <View style={styles.cardBody}>
           <Text style={styles.price}>
-            ${item.price.toFixed(2)}{' '}
+            {formatPartPrice(item.price, item.currency)}{' '}
             <Text style={styles.condition}>{item.condition}</Text>
           </Text>
           {selected && <Text style={styles.checkmark}>✓</Text>}
@@ -486,59 +520,123 @@ const CustomizationScreen = () => {
   };
 
   const openShopOnMaps = (item: ShopResult) => {
+    const {latitude, longitude} = item;
     const url =
-      item.mapsUrl ||
-      (item.latitude != null && item.longitude != null
-        ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}`
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${item.address}`)}`);
+      latitude != null &&
+      longitude != null &&
+      Number.isFinite(latitude) &&
+      Number.isFinite(longitude)
+        ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
+        : item.mapsUrl ||
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${item.address}`)}`;
     Linking.openURL(url);
   };
 
-  const renderShopItem = ({item}: {item: ShopResult}) => (
-    <PressableScale style={styles.card} onPress={() => openShopOnMaps(item)}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.partTitle}>{item.name}</Text>
-        {item.isOpen !== null && (
-          <View
-            style={[
-              styles.sourceBadge,
-              {backgroundColor: item.isOpen ? colors.accent : colors.danger},
-            ]}>
-            <Text style={styles.sourceBadgeText}>
-              {item.isOpen ? 'Open' : 'Closed'}
-            </Text>
+  const openShopWebsite = (url: string) => {
+    const withScheme = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    Linking.openURL(withScheme);
+  };
+
+  const renderShopInfoRow = (
+    icon: string,
+    text: string,
+    onPress?: () => void,
+  ) => {
+    const content = (
+      <View style={styles.shopInfoRow}>
+        <AppIcon name={icon} size={16} color={colors.primary} />
+        <Text
+          style={[styles.shopInfoText, onPress ? styles.shopInfoLink : null]}
+          numberOfLines={4}>
+          {text}
+        </Text>
+      </View>
+    );
+    if (onPress) {
+      return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+          {content}
+        </TouchableOpacity>
+      );
+    }
+    return content;
+  };
+
+  const formatShopRating = (rating: ShopResult['rating']) => {
+    if (rating == null) {
+      return null;
+    }
+    const n = typeof rating === 'number' ? rating : parseFloat(String(rating));
+    return Number.isFinite(n) ? n.toFixed(1) : String(rating);
+  };
+
+  const renderShopCard = (item: ShopResult) => {
+    const ratingLabel = formatShopRating(item.rating);
+    return (
+      <View key={item.id} style={styles.shopCardWrap}>
+        <View style={styles.shopCard}>
+          {item.imageUrl ? (
+            <Image source={{uri: item.imageUrl}} style={styles.shopCardImage} />
+          ) : (
+            <View style={[styles.shopCardImage, styles.shopCardImagePlaceholder]}>
+              <AppIcon name="storefront-outline" size={40} color={colors.textMuted} />
+            </View>
+          )}
+
+          <View style={styles.shopCardBody}>
+            {item.isOpen !== null && (
+              <View
+                style={[
+                  styles.shopStatusBadge,
+                  {backgroundColor: item.isOpen ? colors.accent : colors.danger},
+                ]}>
+                <Text style={styles.shopStatusText}>
+                  {item.isOpen ? 'Open now' : 'Closed'}
+                </Text>
+              </View>
+            )}
+
+            <Text style={styles.shopCardTitle}>{item.name}</Text>
+
+            {renderShopInfoRow('map-marker-radius', item.address)}
+
+            {ratingLabel != null &&
+              renderShopInfoRow(
+                'star',
+                `${ratingLabel} · ${item.totalRatings} reviews`,
+              )}
+
+            {item.phone ? renderShopInfoRow('phone', item.phone) : null}
+
+            {item.hoursSummary
+              ? renderShopInfoRow('clock-outline', item.hoursSummary)
+              : null}
+
+            {item.website
+              ? renderShopInfoRow('web', item.website, () =>
+                  openShopWebsite(item.website!),
+                )
+              : null}
+
+            <TouchableOpacity
+              style={styles.shopMapsBtn}
+              onPress={() => openShopOnMaps(item)}
+              activeOpacity={0.85}>
+              <AppIcon name="map-marker-radius" size={18} color="#0B0B0B" />
+              <Text style={styles.shopMapsBtnText}>Open in Google Maps</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </View>
-      <Text style={styles.shopAddress}>{item.address}</Text>
-      {item.rating !== null && (
-        <View style={styles.shopRatingRow}>
-          <AppIcon name="star" size={14} color={colors.primary} />
-          <Text style={styles.shopRating}>
-            {item.rating} ({item.totalRatings} reviews)
-          </Text>
         </View>
-      )}
-      <View style={styles.mapsLinkRow}>
-        <AppIcon name="map-marker-radius" size={16} color={colors.primary} />
-        <Text style={styles.mapsLinkText}>Open in Google Maps</Text>
       </View>
-    </PressableScale>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <Text style={styles.title}>Customization</Text>
       <Text style={styles.titleSub}>Premium parts marketplace</Text>
 
-      {selectedCar && (
-        <View style={styles.carBanner}>
-          <AppIcon name="car-sports" size={18} color={colors.primary} />
-          <Text style={styles.carBannerText}>
-            {selectedCar.year} {selectedCar.make} {selectedCar.model}
-          </Text>
-        </View>
-      )}
+      <CarSelector style={styles.carBannerSpacing} />
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
@@ -611,6 +709,9 @@ const CustomizationScreen = () => {
           {partsSource !== '' && parts.length > 0 && (
             <>
               <Text style={styles.sourceLabel}>
+                {partsMarketLabel
+                  ? `Market: ${partsMarketLabel} · `
+                  : ''}
                 Source: {getSourceLabel(partsSource)} · {parts.length} results
               </Text>
               {optimizedQuery ? (
@@ -619,6 +720,10 @@ const CustomizationScreen = () => {
                 </Text>
               ) : null}
             </>
+          )}
+
+          {partsDiagnostic !== '' && (
+            <Text style={styles.warningText}>{partsDiagnostic}</Text>
           )}
 
           {partsError !== '' && (
@@ -795,37 +900,46 @@ const CustomizationScreen = () => {
 
       {/* Shops tab */}
       {activeTab === 'shops' && (
-        <View style={styles.content}>
-          <MarketSelector />
+        <View style={styles.shopsTab}>
+          <View style={styles.shopsTabHeader}>
+            <MarketSelector />
+            <Text style={styles.shopsTabSubtitle}>
+              Auto parts & service near you · {getMarket(countryCode).label}
+            </Text>
+          </View>
           {shopsError !== '' && (
             <Text style={styles.errorText}>{shopsError}</Text>
           )}
           {shopsLoading ? (
-            <ActivityIndicator
-              size="large"
-              color={colors.primary}
-              style={styles.loader}
-            />
+            <View style={styles.shopsCentered}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.shopsLoadingText}>Finding shops…</Text>
+            </View>
           ) : shops.length === 0 ? (
-            <View style={styles.emptyState}>
+            <View style={styles.shopsCentered}>
               <View style={styles.emptyIconWrap}>
                 <AppIcon name="map-marker-radius" size={36} color={colors.primary} />
               </View>
-              <Text style={styles.emptyText}>
-                Finding car parts & service shops in {getMarket(countryCode).label}…
+              <Text style={[styles.emptyText, styles.shopsEmptyTitle]}>
+                No shops loaded yet
               </Text>
-              <PressableScale style={styles.refreshShopsBtn} onPress={searchShops}>
+              <Text style={styles.emptyHint}>
+                Search for mechanics and parts stores in {getMarket(countryCode).label}
+              </Text>
+              <TouchableOpacity
+                style={styles.refreshShopsBtn}
+                onPress={searchShops}
+                activeOpacity={0.85}>
                 <Text style={styles.refreshShopsText}>Search shops</Text>
-              </PressableScale>
+              </TouchableOpacity>
             </View>
           ) : (
-            <FlatList
-              data={shops}
-              renderItem={renderShopItem}
-              keyExtractor={item => item.id}
-              contentContainerStyle={styles.list}
-              showsVerticalScrollIndicator={false}
-            />
+            <ScrollView
+              style={styles.shopsScroll}
+              contentContainerStyle={styles.shopsList}
+              showsVerticalScrollIndicator={false}>
+              {shops.map(renderShopCard)}
+            </ScrollView>
           )}
         </View>
       )}

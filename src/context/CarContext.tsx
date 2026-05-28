@@ -10,6 +10,7 @@ type CarContextType = {
   selectedCar: Car | null;
   addCar: (car: Omit<Car, 'id'>) => Promise<void>;
   removeCar: (id: string) => Promise<void>;
+  resetGarage: () => Promise<void>;
   selectCar: (car: Car) => void;
   updateCarImage: (id: string, imageUri: string) => Promise<void>;
 };
@@ -19,6 +20,7 @@ const CarContext = createContext<CarContextType>({
   selectedCar: null,
   addCar: async () => {},
   removeCar: async () => {},
+  resetGarage: async () => {},
   selectCar: () => {},
   updateCarImage: async () => {},
 });
@@ -104,6 +106,17 @@ export const CarProvider = ({children}: {children: React.ReactNode}) => {
     });
   };
 
+  const resetGarage = async () => {
+    try {
+      await api.del('/cars');
+    } catch {
+      // clear local state even if backend unreachable
+    }
+    await AsyncStorage.removeItem(SELECTED_CAR_KEY);
+    setCars([]);
+    setSelectedCar(null);
+  };
+
   const selectCar = (car: Car) => {
     setSelectedCar(car);
     AsyncStorage.setItem(SELECTED_CAR_KEY, car.id);
@@ -120,7 +133,8 @@ export const CarProvider = ({children}: {children: React.ReactNode}) => {
   };
 
   return (
-    <CarContext.Provider value={{cars, selectedCar, addCar, removeCar, selectCar, updateCarImage}}>
+    <CarContext.Provider
+      value={{cars, selectedCar, addCar, removeCar, resetGarage, selectCar, updateCarImage}}>
       {children}
     </CarContext.Provider>
   );

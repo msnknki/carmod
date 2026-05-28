@@ -1,9 +1,8 @@
 const express = require('express');
 const auth = require('../middleware/auth');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { generateText } = require('../utils/gemini');
 
 const router = express.Router();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // POST /api/estimate — get cost estimation for modifications or repairs
 router.post('/', auth, async (req, res, next) => {
@@ -16,8 +15,6 @@ router.post('/', auth, async (req, res, next) => {
 
     const carStr = [carYear, carMake, carModel].filter(Boolean).join(' ') || 'a car';
     const modsStr = modifications.map((m, i) => `${i + 1}. ${typeof m === 'string' ? m : m.title || m.name}`).join('\n');
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const prompt = `You are an automotive cost estimation expert. Provide a detailed cost breakdown for the following modifications/repairs on ${carStr}.
 ${region ? `Region: ${region}` : ''}
@@ -50,8 +47,7 @@ Respond ONLY with valid JSON in this exact format:
 
 All costs in USD. Be realistic with current market prices.`;
 
-    const result = await model.generateContent(prompt);
-    let text = result.response.text().trim();
+    let text = (await generateText(prompt)).trim();
 
     // Strip markdown code fences if present
     text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');

@@ -1,42 +1,75 @@
 const axios = require('axios');
 const { getPartsSource } = require('../utils/shippingRegions');
+const { readEnv } = require('../utils/env');
+const { getShoppingLocale } = require('../utils/marketLocations');
 
-// Map app country codes to Serper.dev gl (Google locale) codes
-const COUNTRY_TO_GL = {
-  LB: 'ae', // Lebanon has sparse Google Shopping; use UAE region for better coverage
-  AE: 'ae',
-  US: 'us',
-  GB: 'gb',
-  DE: 'de',
-};
+function parsePriceAndCurrency(priceRaw) {
+  const text = String(priceRaw || '');
+  const price = parseFloat(text.replace(/[^0-9.]/g, '')) || 0;
+  if (/AED|د\.إ/i.test(text)) return {price, currency: 'AED'};
+  if (/€|EUR/i.test(text)) return {price, currency: 'EUR'};
+  if (/£|GBP/i.test(text)) return {price, currency: 'GBP'};
+  if (/\$|USD/i.test(text)) return {price, currency: 'USD'};
+  return {price, currency: 'USD'};
+}
+
+/** @type {string | null} */
+let lastSearchDiagnostic = null;
+
+function setDiagnostic(message) {
+  lastSearchDiagnostic = message;
+}
+
+function getSearchDiagnostic() {
+  return lastSearchDiagnostic;
+}
 
 // Search Google Shopping via Serper.dev — returns real product images
 async function searchSerper(query, countryCode, limit = 10) {
-  const apiKey = process.env.SERPER_API_KEY;
+  const apiKey = readEnv('SERPER_API_KEY');
   if (!apiKey) {
-    return null; // signal to caller to try next source
+    setDiagnostic(
+      'SERPER_API_KEY is not set on the server. In Render, use exactly: SERPER_API_KEY (not SERPER_KEY).',
+    );
+    return null;
   }
 
-  const gl = COUNTRY_TO_GL[countryCode] || 'us';
+  const locale = getShoppingLocale(countryCode);
 
-  try {
+  const fetchShopping = async (gl, hl, location) => {
     const res = await axios.post(
       'https://google.serper.dev/shopping',
-      { q: query, gl, num: limit },
-      { headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' } },
+      {q: query, gl, hl, location, num: limit},
+      {headers: {'X-API-KEY': apiKey, 'Content-Type': 'application/json'}, timeout: 12000},
     );
+    return res.data?.shopping || [];
+  };
 
-    const items = res.data?.shopping || [];
-    if (items.length === 0) return null;
+  try {
+    let items = await fetchShopping(locale.gl, locale.hl, locale.location);
 
+    if (items.length === 0 && locale.fallbackGl) {
+      items = await fetchShopping(
+        locale.fallbackGl,
+        locale.hl,
+        locale.fallbackLocation || locale.location,
+      );
+    }
+
+    if (items.length === 0) {
+      setDiagnostic('Serper returned no shopping results for this query.');
+      return null;
+    }
+
+    setDiagnostic(null);
     return items.map((item, i) => {
-      const priceRaw = item.price || '';
-      const price = parseFloat(priceRaw.replace(/[^0-9.]/g, '')) || 0;
+      const {price, currency} = parsePriceAndCurrency(item.price);
       return {
         id: `serper_${i}_${Date.now()}`,
         title: item.title || '',
         price,
-        currency: 'USD',
+        currency,
+        market: locale.countryCode,
         imageUrl: item.imageUrl || item.thumbnailUrl || '',
         url: item.link || '',
         condition: 'New',
@@ -47,14 +80,22 @@ async function searchSerper(query, countryCode, limit = 10) {
       };
     });
   } catch (err) {
-    console.error('Serper API error:', err.response?.data || err.message);
+    const detail = err.response?.data?.message || err.response?.data || err.message;
+    console.error('Serper API error:', detail);
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      setDiagnostic(
+        'Serper API key is invalid or expired. Create a new key at serper.dev and set SERPER_API_KEY on Render.',
+      );
+    } else {
+      setDiagnostic(`Serper request failed: ${typeof detail === 'string' ? detail : 'unknown error'}`);
+    }
     return null;
   }
 }
 
 // Search eBay Finding API (App ID only, no OAuth)
 async function searchEbay(query, limit = 10) {
-  const apiKey = process.env.EBAY_API_KEY;
+  const apiKey = readEnv('EBAY_API_KEY');
   if (!apiKey) return null;
 
   try {
@@ -101,7 +142,7 @@ async function searchEbay(query, limit = 10) {
 
 // Search AliExpress Affiliate API
 async function searchAliExpress(query, limit = 10) {
-  const apiKey = process.env.ALIEXPRESS_API_KEY;
+  const apiKey = readEnv('ALIEXPRESS_API_KEY');
   if (!apiKey) return null;
 
   try {
@@ -173,27 +214,43 @@ function getMockResults(query, source = 'serper') {
 
 // Main search: Serper → eBay → AliExpress → mock
 async function searchParts(query, countryCode, limit = 10) {
+  lastSearchDiagnostic = null;
+
   // 1. Try Serper.dev (Google Shopping) — real images, works globally
   const serperResults = await searchSerper(query, countryCode, limit);
   if (serperResults && serperResults.length > 0) {
-    return serperResults;
+    return { results: serperResults, provider: 'serper', mockFallback: false, diagnostic: null };
   }
 
   // 2. Try eBay Finding API
   const ebayResults = await searchEbay(query, limit);
   if (ebayResults && ebayResults.length > 0) {
-    return ebayResults;
+    return { results: ebayResults, provider: 'ebay', mockFallback: false, diagnostic: null };
   }
 
   // 3. Try AliExpress Affiliate API
   const aliResults = await searchAliExpress(query, limit);
   if (aliResults && aliResults.length > 0) {
-    return aliResults;
+    return { results: aliResults, provider: 'aliexpress', mockFallback: false, diagnostic: null };
   }
 
-  // 4. Fall back to mock data
+  // 4. Fall back to mock data (dev/demo only)
   const source = getPartsSource(countryCode);
-  return getMockResults(query, source);
+  const diagnostic =
+    lastSearchDiagnostic ||
+    'No parts API keys configured. Add SERPER_API_KEY (recommended) on Render.';
+  return {
+    results: getMockResults(query, source),
+    provider: 'mock',
+    mockFallback: true,
+    diagnostic,
+  };
 }
 
-module.exports = { searchParts, searchSerper, searchEbay, searchAliExpress };
+module.exports = {
+  searchParts,
+  searchSerper,
+  searchEbay,
+  searchAliExpress,
+  getSearchDiagnostic,
+};

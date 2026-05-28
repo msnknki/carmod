@@ -1,11 +1,10 @@
 const express = require('express');
 const auth = require('../middleware/auth');
 const { searchParts } = require('../services/partsSearchService');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { REGIONAL_SHOPPING_HINTS } = require('../utils/marketLocations');
+const { generateText } = require('../utils/gemini');
+const { REGIONAL_SHOPPING_HINTS, getShoppingLocale } = require('../utils/marketLocations');
 
 const router = express.Router();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // POST /api/parts/search — search for car parts
 router.post('/search', auth, async (req, res, next) => {
@@ -16,17 +15,18 @@ router.post('/search', auth, async (req, res, next) => {
       return res.status(400).json({ error: 'Search query is required' });
     }
 
-    // Use Gemini to generate an optimized search query
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    const regionHint = REGIONAL_SHOPPING_HINTS[countryCode?.toUpperCase()] || REGIONAL_SHOPPING_HINTS.US;
-    const prompt = `Convert this car parts search into a specific search query (max 10 words). ALWAYS include the exact year AND chassis code when known. Return ONLY the query, nothing else.
+    const market = getShoppingLocale(countryCode || 'US');
+    const regionHint = REGIONAL_SHOPPING_HINTS[market.countryCode] || REGIONAL_SHOPPING_HINTS.US;
+    const prompt = `Convert this car parts search into a specific Google Shopping query (max 12 words). ALWAYS include the exact year AND chassis code when known. Return ONLY the query, nothing else.
 
 User request: "${query}"
 ${carMake ? `Car: ${carYear || ''} ${carMake} ${carModel || ''}`.trim() : ''}
-Market: ${countryCode || 'US'} — ${regionHint}
+Market country: ${market.label} (${market.countryCode}) — ${regionHint}
 
 Rules:
 - Always include year + make + model/chassis code
+- Include the market country name "${market.label}" in the query so results match that region
+- Prefer retailers and listings available in ${market.label}
 - Use chassis codes for BMW (E39, E46, F30...), Mercedes (W211, W204...), etc.
 - Year is critical — include it to avoid returning results for newer models
 
@@ -35,17 +35,22 @@ Examples:
 "black rims" for 2003 BMW 540i → "2003 BMW E39 black alloy wheels"
 "sport rims" for 2015 BMW 320i → "2015 BMW 320i F30 sport alloy wheels"
 "brake pads" for 2020 Toyota Camry → "2020 Toyota Camry brake pads"
-"exhaust" for 2003 BMW 540i → "BMW E39 540i performance exhaust"`;
+"exhaust" for 2003 BMW 540i in Lebanon → "BMW E39 540i performance exhaust Lebanon"
+"brake pads" for 2020 Toyota Camry in UAE → "2020 Toyota Camry brake pads UAE"`;
 
-    let optimizedQuery = carMake ? `${carYear || ''} ${carMake} ${carModel || ''} ${query}`.trim() : query;
+    let optimizedQuery = carMake
+      ? `${carYear || ''} ${carMake} ${carModel || ''} ${query} ${market.label}`.trim()
+      : `${query} ${market.label}`.trim();
     try {
-      const result = await model.generateContent(prompt);
-      optimizedQuery = result.response.text().trim().replace(/^["']|["']$/g, '');
+      optimizedQuery = (await generateText(prompt))
+        .trim()
+        .replace(/^["']|["']$/g, '');
     } catch {
       // Gemini failed — use car-prefixed query as fallback
     }
 
-    const parts = await searchParts(optimizedQuery, countryCode || 'US');
+    const search = await searchParts(optimizedQuery, countryCode || 'US');
+    const parts = search.results;
 
     // Filter using optimized query words (which include car make/model) so generic parts are excluded
     const filterWords = optimizedQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
@@ -58,7 +63,11 @@ Examples:
 
     res.json({
       query: optimizedQuery,
-      source: results.length > 0 ? results[0].source : 'serper',
+      market: market.countryCode,
+      marketLabel: market.label,
+      source: search.provider,
+      mockFallback: search.mockFallback,
+      diagnostic: search.diagnostic,
       results,
     });
   } catch (err) {

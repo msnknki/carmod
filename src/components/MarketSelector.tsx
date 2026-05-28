@@ -1,9 +1,8 @@
 import React from 'react';
-import {View, Text, ScrollView, StyleSheet} from 'react-native';
+import {View, Text, ScrollView, StyleSheet, TouchableOpacity} from 'react-native';
 import {colors, fontSize, radius, shadows, spacing} from '../theme';
 import {MARKETS, type MarketCode} from '../data/markets';
 import {useMarket} from '../context/MarketContext';
-import PressableScale from './ui/PressableScale';
 
 const MarketSelector = () => {
   const {countryCode, setCountryCode} = useMarket();
@@ -11,26 +10,25 @@ const MarketSelector = () => {
   return (
     <View style={styles.bar}>
       <Text style={styles.label}>Market</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.chips}>
-          {MARKETS.map(m => (
-            <PressableScale
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.scroll}
+        contentContainerStyle={styles.chips}>
+        {MARKETS.map(m => {
+          const selected = countryCode === m.code;
+          return (
+            <TouchableOpacity
               key={m.code}
-              style={[
-                styles.chip,
-                countryCode === m.code && styles.chipSelected,
-              ]}
-              onPress={() => setCountryCode(m.code as MarketCode)}>
-              <Text
-                style={[
-                  styles.chipText,
-                  countryCode === m.code && styles.chipTextSelected,
-                ]}>
+              style={[styles.chip, selected && styles.chipSelected]}
+              onPress={() => setCountryCode(m.code as MarketCode)}
+              activeOpacity={0.8}>
+              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
                 {m.label}
               </Text>
-            </PressableScale>
-          ))}
-        </View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -38,6 +36,7 @@ const MarketSelector = () => {
 
 const styles = StyleSheet.create({
   bar: {
+    width: '100%',
     paddingVertical: spacing.sm,
     marginBottom: spacing.sm,
   },
@@ -49,7 +48,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: spacing.sm,
   },
-  chips: {flexDirection: 'row', gap: spacing.sm},
+  scroll: {
+    flexGrow: 0,
+    maxHeight: 48,
+  },
+  chips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingRight: spacing.sm,
+  },
   chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: 8,

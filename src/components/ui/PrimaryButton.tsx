@@ -64,6 +64,7 @@ const PrimaryButton = ({
 
 const styles = StyleSheet.create({
   base: {
+    alignSelf: 'stretch',
     borderRadius: radius.md,
     paddingVertical: 16,
     paddingHorizontal: 20,

@@ -67,7 +67,8 @@ const HomeScreen = () => {
   const navigation =
     useNavigation<BottomTabNavigationProp<RootTabParamList>>();
   const {openAssistant} = useAIAssistant();
-  const {cars, selectedCar, addCar, removeCar, selectCar, updateCarImage} = useCar();
+  const {cars, selectedCar, addCar, removeCar, resetGarage, selectCar, updateCarImage} =
+    useCar();
   const [make, setMake] = useState<CarMake | ''>('');
   const [model, setModel] = useState('');
   const [year, setYear] = useState<number | ''>('');
@@ -148,6 +149,36 @@ const HomeScreen = () => {
     setShowForm(false);
   };
 
+  const confirmRemoveCar = (item: {id: string; year: number; make: string; model: string}) => {
+    Alert.alert(
+      'Remove Car',
+      `Remove ${item.year} ${item.make} ${item.model} from your garage?`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => removeCar(item.id),
+        },
+      ],
+    );
+  };
+
+  const confirmResetGarage = () => {
+    Alert.alert(
+      'Reset Garage',
+      'Delete all cars and clear saved projects on this device? This cannot be undone.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Reset All',
+          style: 'destructive',
+          onPress: () => resetGarage(),
+        },
+      ],
+    );
+  };
+
   const navigateQuick = (action: (typeof QUICK_ACTIONS)[number]) => {
     if ('action' in action && action.action === 'ai') {
       openAssistant();
@@ -176,7 +207,83 @@ const HomeScreen = () => {
             </Text>
           </View>
 
-          {selectedCar ? (
+          <View style={styles.carsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Your Garage</Text>
+              {cars.length > 0 && (
+                <PressableScale onPress={confirmResetGarage}>
+                  <Text style={styles.resetLink}>Reset all</Text>
+                </PressableScale>
+              )}
+            </View>
+            {cars.length === 0 ? (
+              <View style={[styles.heroCard, styles.emptyHero]}>
+                <View style={styles.emptyHeroIcon}>
+                  <AppIcon name="garage-open" size={36} color={colors.primary} />
+                </View>
+                <Text style={styles.emptyHeroTitle}>Build your garage</Text>
+                <Text style={styles.emptyHeroText}>
+                  Add your first vehicle to unlock diagnostics, parts search, and
+                  AI help tailored to your car.
+                </Text>
+                {!showForm && (
+                  <PrimaryButton
+                    label="Add Your Car"
+                    onPress={() => setShowForm(true)}
+                    style={{width: '100%'}}
+                  />
+                )}
+              </View>
+            ) : (
+              <>
+                <Text style={styles.garageHint}>Tap a car to select · trash to remove</Text>
+                <FlatList
+                  data={cars}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={item => item.id}
+                  contentContainerStyle={styles.garageList}
+                  renderItem={({item}) => (
+                    <PressableScale
+                      centerContent={false}
+                      style={[
+                        styles.garageCard,
+                        selectedCar?.id === item.id && styles.garageCardSelected,
+                      ]}
+                      onPress={() => selectCar(item)}>
+                      <View style={styles.garageThumbWrap}>
+                        {item.imageUri ? (
+                          <Image source={{uri: item.imageUri}} style={styles.garageThumb} />
+                        ) : (
+                          <View style={[styles.garageThumb, styles.heroImagePlaceholder]}>
+                            <AppIcon name="car" size={32} color={colors.textMuted} />
+                          </View>
+                        )}
+                        <PressableScale
+                          style={styles.garageDeleteBtn}
+                          onPress={() => confirmRemoveCar(item)}>
+                          <AppIcon name="trash-can-outline" size={18} color={colors.danger} />
+                        </PressableScale>
+                      </View>
+                      <Text style={styles.garageCarName} numberOfLines={2}>
+                        {item.year} {item.make}
+                      </Text>
+                      <Text style={styles.garageCarModel} numberOfLines={1}>
+                        {item.model}
+                      </Text>
+                      {selectedCar?.id === item.id && (
+                        <View style={styles.activeBadge}>
+                          <Text style={styles.activeLabel}>ACTIVE</Text>
+                        </View>
+                      )}
+                    </PressableScale>
+                  )}
+                />
+              </>
+            )}
+          </View>
+
+          {selectedCar && (
             <View style={styles.heroCard}>
               <TouchableOpacity onPress={pickHeroImage} activeOpacity={0.85}>
                 {selectedCar.imageUri ? (
@@ -194,7 +301,7 @@ const HomeScreen = () => {
                 </View>
               </TouchableOpacity>
               <View style={styles.heroOverlay}>
-                <Text style={styles.heroLabel}>Active vehicle</Text>
+                <Text style={styles.heroLabel}>Selected vehicle</Text>
                 <Text style={styles.heroCarName}>
                   {selectedCar.year} {selectedCar.make} {selectedCar.model}
                 </Text>
@@ -209,32 +316,14 @@ const HomeScreen = () => {
                   </View>
                   <View style={styles.statPill}>
                     <Text style={styles.statValue}>{cars.length}</Text>
-                    <Text style={styles.statLabel}>Garage</Text>
+                    <Text style={styles.statLabel}>In garage</Text>
                   </View>
                 </View>
               </View>
             </View>
-          ) : (
-            <View style={[styles.heroCard, styles.emptyHero]}>
-              <View style={styles.emptyHeroIcon}>
-                <AppIcon name="garage-open" size={36} color={colors.primary} />
-              </View>
-              <Text style={styles.emptyHeroTitle}>Build your garage</Text>
-              <Text style={styles.emptyHeroText}>
-                Add your vehicle to unlock personalized diagnostics, parts, and
-                AI recommendations.
-              </Text>
-              {!showForm && (
-                <PrimaryButton
-                  label="Add Your Car"
-                  onPress={() => setShowForm(true)}
-                  style={{width: '100%'}}
-                />
-              )}
-            </View>
           )}
 
-          {selectedCar && !showForm && (
+          {cars.length > 0 && !showForm && (
             <PrimaryButton
               label="Add Another Car"
               variant="outline"
@@ -317,64 +406,6 @@ const HomeScreen = () => {
             ))}
           </View>
 
-          {cars.length > 0 && (
-            <View style={styles.carsSection}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Your Garage</Text>
-                <Text style={{color: colors.textMuted, fontSize: 13}}>
-                  Long press to remove
-                </Text>
-              </View>
-              <FlatList
-                data={cars}
-                scrollEnabled={false}
-                keyExtractor={item => item.id}
-                renderItem={({item}) => (
-                  <PressableScale
-                    centerContent={false}
-                    style={[
-                      styles.carCard,
-                      selectedCar?.id === item.id && styles.carCardSelected,
-                    ]}
-                    onPress={() => selectCar(item)}
-                    onLongPress={() =>
-                      Alert.alert(
-                        'Remove Car',
-                        `Remove ${item.year} ${item.make} ${item.model}?`,
-                        [
-                          {text: 'Cancel', style: 'cancel'},
-                          {
-                            text: 'Remove',
-                            style: 'destructive',
-                            onPress: () => removeCar(item.id),
-                          },
-                        ],
-                      )
-                    }>
-                    <View style={styles.carCardRow}>
-                    {item.imageUri ? (
-                      <Image source={{uri: item.imageUri}} style={styles.cardThumb} />
-                    ) : (
-                      <View style={[styles.cardThumb, styles.heroImagePlaceholder]}>
-                        <AppIcon name="car" size={28} color={colors.textMuted} />
-                      </View>
-                    )}
-                    <View style={styles.cardInfo}>
-                      <Text style={styles.carName}>
-                        {item.year} {item.make} {item.model}
-                      </Text>
-                      {selectedCar?.id === item.id && (
-                        <View style={styles.activeBadge}>
-                          <Text style={styles.activeLabel}>ACTIVE</Text>
-                        </View>
-                      )}
-                    </View>
-                    </View>
-                  </PressableScale>
-                )}
-              />
-            </View>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

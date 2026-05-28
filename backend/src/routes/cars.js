@@ -41,6 +41,15 @@ router.patch('/:id', auth, (req, res) => {
   res.json({ id: req.params.id, image_uri: imageUri ?? null });
 });
 
+// DELETE /api/cars — remove all cars (and related projects/conversations) for user
+router.delete('/', auth, (req, res) => {
+  const userId = req.userId;
+  db.prepare('DELETE FROM modification_projects WHERE user_id = ?').run(userId);
+  db.prepare('DELETE FROM conversations WHERE user_id = ?').run(userId);
+  db.prepare('DELETE FROM cars WHERE user_id = ?').run(userId);
+  res.json({ message: 'Garage reset' });
+});
+
 // DELETE /api/cars/:id — delete a car
 router.delete('/:id', auth, (req, res) => {
   const car = db.prepare('SELECT * FROM cars WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);

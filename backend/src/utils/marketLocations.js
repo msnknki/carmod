@@ -6,8 +6,35 @@ const MARKETS = {
   DE: {label: 'Germany', latitude: 52.52, longitude: 13.405},
 };
 
+/** Serper Google Shopping locale per app market */
+const SHOPPING_LOCALE = {
+  // Google Shopping is sparse for LB — fall back to AE catalog while keeping Lebanon in the query
+  LB: {
+    gl: 'lb',
+    hl: 'en',
+    location: 'Beirut, Lebanon',
+    fallbackGl: 'ae',
+    fallbackLocation: 'Dubai, United Arab Emirates',
+  },
+  AE: {gl: 'ae', hl: 'en', location: 'Dubai, United Arab Emirates'},
+  US: {gl: 'us', hl: 'en', location: 'United States'},
+  GB: {gl: 'gb', hl: 'en', location: 'United Kingdom'},
+  DE: {gl: 'de', hl: 'de', location: 'Germany'},
+};
+
 function getMarket(code) {
   return MARKETS[code?.toUpperCase()] || MARKETS.US;
+}
+
+function getShoppingLocale(countryCode) {
+  const code = countryCode?.toUpperCase() || 'US';
+  const market = getMarket(code);
+  const locale = SHOPPING_LOCALE[code] || SHOPPING_LOCALE.US;
+  return {
+    countryCode: code,
+    label: market.label,
+    ...locale,
+  };
 }
 
 const REGIONAL_SHOPPING_HINTS = {
@@ -18,4 +45,9 @@ const REGIONAL_SHOPPING_HINTS = {
   DE: 'Germany — eBay DE, Autodoc, Amazon DE',
 };
 
-module.exports = { MARKETS, getMarket, REGIONAL_SHOPPING_HINTS };
+module.exports = {
+  MARKETS,
+  getMarket,
+  getShoppingLocale,
+  REGIONAL_SHOPPING_HINTS,
+};

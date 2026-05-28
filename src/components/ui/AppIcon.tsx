@@ -39,6 +39,9 @@ import {
   ChevronDown,
   Check,
   XCircle,
+  Phone,
+  Globe,
+  Clock,
 } from 'lucide-react-native';
 import {colors} from '../../theme';
 
@@ -87,6 +90,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'image-plus': Camera,
   'chevron-down': ChevronDown,
   check: Check,
+  phone: Phone,
+  'web': Globe,
+  'clock-outline': Clock,
 };
 
 export type AppIconName = keyof typeof ICON_MAP;

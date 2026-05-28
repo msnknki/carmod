@@ -1,29 +1,9 @@
 const express = require('express');
 const db = require('../config/database');
 const auth = require('../middleware/auth');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { generateText } = require('../utils/gemini');
 
 const router = express.Router();
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const MODEL = 'gemini-2.5-flash-lite';
-
-async function withRetry(fn, retries = 3) {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      const msg = err?.message || '';
-      const retryable = msg.includes('429') || msg.includes('503') || err?.status === 429 || err?.status === 503;
-      if (retryable && i < retries) {
-        await new Promise(r => setTimeout(r, (i + 1) * 2000));
-        continue;
-      }
-      if (retryable) throw new Error('AI service is busy — please wait a moment and try again.');
-      throw err;
-    }
-  }
-}
 
 const DIY_SYSTEM_PROMPT = `You are an expert car mechanic AI. Your primary goal is to EMPOWER the user to diagnose and fix their own car. Only recommend a workshop as a last resort.
 
@@ -81,11 +61,10 @@ router.post('/', auth, async (req, res, next) => {
       }
     }
 
-    const model = genAI.getGenerativeModel({ model: MODEL });
     const followUp = additionalContext ? `\n\nUser follow-up details: ${additionalContext}` : '';
     const prompt = `${DIY_SYSTEM_PROMPT}${carContext}\n\nUser's problem: ${symptom}${followUp}`;
 
-    const text = await withRetry(() => model.generateContent(prompt).then(r => r.response.text()));
+    const text = await generateText(prompt);
 
     // Parse JSON response
     let diagnosis;

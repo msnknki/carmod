@@ -1,14 +1,31 @@
-import {Platform} from 'react-native';
 import Config from 'react-native-config';
 
-const DEFAULT_DEV_API_BASE =
-  Platform.OS === 'android'
-    ? 'http://10.0.2.2:3000/api' // Android emulator -> host machine localhost
-    : 'http://localhost:3000/api';
+/** Hosted backend (used when .env is missing or not baked into the native build). */
+export const PRODUCTION_API_BASE = 'https://carmod.onrender.com/api';
 
-// For physical phones and production, set API_BASE_URL in a local .env file.
-const API_BASE = (Config.API_BASE_URL || DEFAULT_DEV_API_BASE).replace(/\/$/, '');
-const REQUEST_TIMEOUT_MS = 8000;
+// Default: always Render. Local backend only when USE_LOCAL_API=true in .env (then rebuild native app).
+function normalizeApiBase(raw: string | undefined): string {
+  const cleaned = (raw || '')
+    .trim()
+    .replace(/^["']+|["']+$/g, '');
+  return (cleaned || PRODUCTION_API_BASE).replace(/\/$/, '');
+}
+
+const useLocalApi =
+  __DEV__ &&
+  String(Config.USE_LOCAL_API || '').toLowerCase() === 'true';
+
+const API_BASE = useLocalApi
+  ? normalizeApiBase(Config.API_BASE_URL)
+  : PRODUCTION_API_BASE;
+
+if (__DEV__) {
+  console.log('[api] Using base URL:', API_BASE);
+}
+
+export const getApiBaseUrl = () => API_BASE;
+
+const REQUEST_TIMEOUT_MS = 20000;
 
 const GUEST_EMAIL = 'guest@carmodapp.local';
 const GUEST_PASSWORD = 'guestpass123';
@@ -67,7 +84,7 @@ async function request(url: string, options: RequestInit, retry = true): Promise
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {
       throw new Error(
-        'Request timed out — make sure the backend is running (npm start in backend/)',
+        'Request timed out — the server may be waking up (Render free tier) or unreachable',
       );
     }
     throw new Error(

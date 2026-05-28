@@ -7,6 +7,11 @@ const errorHandler = require('./src/middleware/errorHandler');
 // Initialize database (runs schema on first load)
 require('./src/config/database');
 
+const {getAuthMode} = require('./src/utils/gemini');
+const {getEnvStatus} = require('./src/utils/integrationsStatus');
+console.log(`[gemini] Auth mode: ${getAuthMode()}`);
+console.log('[env] integrations:', getEnvStatus());
+
 const app = express();
 
 // Middleware
@@ -25,9 +30,18 @@ app.use('/api/image', require('./src/routes/image'));
 app.use('/api/estimate', require('./src/routes/estimate'));
 app.use('/api/mechanics', require('./src/routes/mechanics'));
 
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check (+ optional ?probe=serper to verify Serper key works)
+app.get('/api/health', async (req, res) => {
+  const payload = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    env: getEnvStatus(),
+  };
+  if (req.query.probe === 'serper') {
+    const {probeSerper} = require('./src/utils/integrationsStatus');
+    payload.serperProbe = await probeSerper();
+  }
+  res.json(payload);
 });
 
 // Error handler (must be last)

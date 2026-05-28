@@ -71,7 +71,7 @@ const PressableScale = ({
 
 const styles = StyleSheet.create({
   pressable: {
-    alignSelf: 'stretch',
+    alignSelf: 'auto',
   },
   pressed: {
     opacity: 0.92,

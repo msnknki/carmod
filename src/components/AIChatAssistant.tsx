@@ -22,6 +22,7 @@ import {useMarket} from '../context/MarketContext';
 import {api} from '../services/api';
 import AppIcon from './ui/AppIcon';
 import PressableScale from './ui/PressableScale';
+import CarSelector from './CarSelector';
 
 type Part = {
   id: string;
@@ -227,14 +228,7 @@ const AIChatAssistant = ({onClose, embedded = false}: Props) => {
             </TouchableOpacity>
           )}
         </View>
-        {selectedCar && (
-          <View style={styles.carBanner}>
-            <AppIcon name="car-sports" size={18} color={colors.primary} />
-            <Text style={styles.carBannerText}>
-              {selectedCar.year} {selectedCar.make} {selectedCar.model}
-            </Text>
-          </View>
-        )}
+        <CarSelector />
       </View>
 
       {messages.length === 0 && (

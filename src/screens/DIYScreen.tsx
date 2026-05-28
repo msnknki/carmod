@@ -9,13 +9,14 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {colors} from '../theme';
+import {colors, spacing} from '../theme';
 import styles from './styles/DIYScreen.styles';
 import {useCar} from '../context/CarContext';
 import {api} from '../services/api';
 import AppIcon from '../components/ui/AppIcon';
 import PressableScale from '../components/ui/PressableScale';
 import PrimaryButton from '../components/ui/PrimaryButton';
+import CarSelector from '../components/CarSelector';
 
 const QUICK_SYMPTOMS = [
   {label: 'Strange Noise', value: 'My car is making a strange noise', icon: 'volume-high'},
@@ -85,11 +86,8 @@ const DIYScreen = () => {
       setResult(res);
     } catch (err: any) {
       const msg =
-        err.message?.includes('busy') ||
-        err.message?.includes('quota') ||
-        err.message?.includes('429')
-          ? 'AI service is busy — please wait a moment and try again.'
-          : err.message || 'Failed to get diagnosis. Make sure the backend is running.';
+        err.message ||
+        'Failed to get diagnosis. Make sure the backend is running.';
       setResult({
         diagnosis: msg,
         confidence: 'low',
@@ -147,14 +145,7 @@ const DIYScreen = () => {
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}>
-          {selectedCar && (
-            <View style={styles.carBanner}>
-              <AppIcon name="car-sports" size={20} color={colors.primary} />
-              <Text style={styles.carBannerText}>
-                {selectedCar.year} {selectedCar.make} {selectedCar.model}
-              </Text>
-            </View>
-          )}
+          <CarSelector style={{marginBottom: spacing.lg}} />
 
           <Text style={styles.sectionLabel}>Diagnostics</Text>
           <Text style={styles.heading}>Describe your problem</Text>
