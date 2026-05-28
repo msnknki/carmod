@@ -1,5 +1,5 @@
 import {StyleSheet} from 'react-native';
-import {colors, fontSize, spacing} from '../../theme';
+import {colors, fontSize, radius, spacing} from '../../theme';
 
 export default StyleSheet.create({
   container: {
@@ -51,8 +51,10 @@ export default StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    minHeight: 44,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 16,
   },
   tabActive: {
@@ -62,6 +64,7 @@ export default StyleSheet.create({
     color: colors.textMuted,
     fontSize: fontSize.sm,
     fontWeight: '600',
+    textAlign: 'center',
   },
   tabTextActive: {
     color: '#0B0B0B',
@@ -402,20 +405,33 @@ export default StyleSheet.create({
     marginBottom: spacing.sm,
   },
   estimateRow: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
   },
   estimateItemName: {
     color: colors.text,
     fontSize: fontSize.md,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  estimateCostLine: {
+    marginBottom: 6,
+  },
+  estimateCostLabel: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
   },
   estimateItemCost: {
     color: colors.textSecondary,
     fontSize: fontSize.sm,
-    marginTop: 2,
+    lineHeight: 20,
+    flexWrap: 'wrap',
   },
   estimateNote: {
     color: colors.warning,
@@ -424,20 +440,53 @@ export default StyleSheet.create({
     marginTop: 2,
   },
   estimateTotalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   estimateTotalLabel: {
-    color: colors.text,
-    fontSize: fontSize.lg,
-    fontWeight: 'bold',
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 4,
   },
   estimateTotalValue: {
-    color: colors.accent,
-    fontSize: fontSize.lg,
-    fontWeight: 'bold',
+    color: colors.primary,
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    lineHeight: 28,
+  },
+  shopRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  mapsLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+  },
+  mapsLinkText: {
+    color: colors.primary,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  refreshShopsBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  refreshShopsText: {
+    color: '#0B0B0B',
+    fontWeight: '700',
+    fontSize: fontSize.md,
   },
   estimateDisclaimer: {
     color: colors.textSecondary,

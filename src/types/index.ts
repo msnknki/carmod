@@ -4,7 +4,6 @@ export type RootTabParamList = {
   Home: undefined;
   DIY: undefined;
   Customization: {tab?: CustomizationTab} | undefined;
-  AI: undefined;
 };
 
 export type Car = {

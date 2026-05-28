@@ -2,6 +2,7 @@ const express = require('express');
 const auth = require('../middleware/auth');
 const { searchParts } = require('../services/partsSearchService');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { REGIONAL_SHOPPING_HINTS } = require('../utils/marketLocations');
 
 const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -17,10 +18,12 @@ router.post('/search', auth, async (req, res, next) => {
 
     // Use Gemini to generate an optimized search query
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-    const prompt = `Convert this car parts search into a specific search query (max 8 words). ALWAYS include the exact year AND chassis code when known. Return ONLY the query, nothing else.
+    const regionHint = REGIONAL_SHOPPING_HINTS[countryCode?.toUpperCase()] || REGIONAL_SHOPPING_HINTS.US;
+    const prompt = `Convert this car parts search into a specific search query (max 10 words). ALWAYS include the exact year AND chassis code when known. Return ONLY the query, nothing else.
 
 User request: "${query}"
 ${carMake ? `Car: ${carYear || ''} ${carMake} ${carModel || ''}`.trim() : ''}
+Market: ${countryCode || 'US'} — ${regionHint}
 
 Rules:
 - Always include year + make + model/chassis code

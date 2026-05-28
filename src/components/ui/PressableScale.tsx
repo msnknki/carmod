@@ -4,6 +4,7 @@ import {
   Pressable,
   PressableProps,
   StyleProp,
+  StyleSheet,
   ViewStyle,
 } from 'react-native';
 
@@ -11,12 +12,15 @@ type Props = PressableProps & {
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
   scaleTo?: number;
+  /** When false, children control layout (e.g. horizontal list rows). */
+  centerContent?: boolean;
 };
 
 const PressableScale = ({
   style,
   children,
   scaleTo = 0.97,
+  centerContent = true,
   disabled,
   onPressIn,
   onPressOut,
@@ -34,24 +38,51 @@ const PressableScale = ({
   };
 
   return (
-    <Animated.View style={[style, {transform: [{scale}]}]}>
-      <Pressable
-        {...rest}
-        disabled={disabled}
-        onPressIn={e => {
-          if (!disabled) {
-            animateTo(scaleTo);
-          }
-          onPressIn?.(e);
-        }}
-        onPressOut={e => {
-          animateTo(1);
-          onPressOut?.(e);
-        }}>
+    <Pressable
+      {...rest}
+      disabled={disabled}
+      style={({pressed}) => [
+        styles.pressable,
+        style,
+        pressed && !disabled && styles.pressed,
+      ]}
+      onPressIn={e => {
+        if (!disabled) {
+          animateTo(scaleTo);
+        }
+        onPressIn?.(e);
+      }}
+      onPressOut={e => {
+        animateTo(1);
+        onPressOut?.(e);
+      }}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.content,
+          centerContent && styles.contentCentered,
+          {transform: [{scale}]},
+        ]}>
         {children}
-      </Pressable>
-    </Animated.View>
+      </Animated.View>
+    </Pressable>
   );
 };
+
+const styles = StyleSheet.create({
+  pressable: {
+    alignSelf: 'stretch',
+  },
+  pressed: {
+    opacity: 0.92,
+  },
+  content: {
+    width: '100%',
+  },
+  contentCentered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 export default PressableScale;

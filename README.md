@@ -95,3 +95,36 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+## Backend From Anywhere (Phones Anywhere)
+
+1. Deploy backend to a public HTTPS URL (example: `https://api.yourdomain.com`).
+2. In app root, copy `mobile.env.template` to `.env`.
+3. Set:
+
+```sh
+API_BASE_URL=https://api.yourdomain.com/api
+```
+
+4. Rebuild app:
+
+```sh
+npm run android
+```
+
+## Manual APK Builds (Phone Install)
+
+```sh
+# Debug APK (easy install for testing)
+npm run android:apk:debug
+
+# Release APK (signed with current release config)
+npm run android:apk:release
+
+# Install debug APK on connected phone
+npm run android:install:debug
+```
+
+APK outputs:
+- Debug: `android/app/build/outputs/apk/debug/app-debug.apk`
+- Release: `android/app/build/outputs/apk/release/app-release.apk`

@@ -1,25 +1,29 @@
 const express = require('express');
 const auth = require('../middleware/auth');
 const { searchNearbyShops } = require('../services/localShopsService');
+const { getMarket } = require('../utils/marketLocations');
 
 const router = express.Router();
 
-// GET /api/shops/nearby — find local auto parts shops
+// GET /api/shops/nearby — find local auto parts shops (Google Places)
 router.get('/nearby', auth, async (req, res, next) => {
   try {
-    const { latitude, longitude, radius } = req.query;
+    let { latitude, longitude, radius, countryCode } = req.query;
 
+    const market = getMarket(countryCode);
     if (!latitude || !longitude) {
-      return res.status(400).json({ error: 'latitude and longitude are required' });
+      latitude = market.latitude;
+      longitude = market.longitude;
     }
 
     const shops = await searchNearbyShops(
       parseFloat(latitude),
       parseFloat(longitude),
       radius ? parseInt(radius, 10) : undefined,
+      countryCode,
     );
 
-    res.json({ results: shops });
+    res.json({ results: shops, market: market.label });
   } catch (err) {
     next(err);
   }

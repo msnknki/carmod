@@ -1,8 +1,13 @@
 import React, {useState, useEffect} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
-import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {View, Text, StyleSheet, ActivityIndicator, Image} from 'react-native';
+
+const appLogo = require('./src/assets/app-logo.png');
 import AppNavigator from './src/navigation/AppNavigator';
 import {CarProvider} from './src/context/CarContext';
+import {MarketProvider} from './src/context/MarketContext';
+import {AIAssistantProvider} from './src/context/AIAssistantContext';
 import {api, setAuthToken} from './src/services/api';
 
 // INTEGRATION STEP 2: Delete the three GUEST_* constants and the ensureGuestSession function
@@ -48,9 +53,7 @@ async function ensureGuestSession() {
 
 const SplashScreen = () => (
   <View style={splashStyles.container}>
-    <View style={splashStyles.logoRing}>
-      <Text style={splashStyles.logoMark}>CM</Text>
-    </View>
+    <Image source={appLogo} style={splashStyles.logo} resizeMode="contain" />
     <Text style={splashStyles.title}>Car Mod</Text>
     <Text style={splashStyles.subtitle}>Modify · Diagnose · Visualize</Text>
     <ActivityIndicator
@@ -68,22 +71,10 @@ const splashStyles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#0B0B0B',
   },
-  logoRing: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(255, 214, 10, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 214, 10, 0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  logoMark: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFD60A',
-    letterSpacing: 1,
+  logo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
   },
   title: {fontSize: 32, fontWeight: '700', color: '#ffffff', letterSpacing: -0.5},
   subtitle: {fontSize: 14, color: '#B3B3B3', marginTop: 6},
@@ -95,31 +86,41 @@ const App = () => {
 
   useEffect(() => {
     const init = async () => {
+      const minSplashMs = 1200;
+      const authTimeoutMs = 6000;
+
       await Promise.all([
-        ensureGuestSession(), // INTEGRATION STEP 2: Replace with restoreSession() (see comment above)
-        new Promise<void>(resolve => {
-          setTimeout(resolve, 1500);
-        }),
+        Promise.race([
+          ensureGuestSession(), // INTEGRATION STEP 2: Replace with restoreSession() (see comment above)
+          new Promise<void>(resolve => setTimeout(resolve, authTimeoutMs)),
+        ]),
+        new Promise<void>(resolve => setTimeout(resolve, minSplashMs)),
       ]);
       setReady(true);
     };
     init();
   }, []);
 
-  if (!ready) {
-    return <SplashScreen />;
-  }
-
   return (
-    <CarProvider>
-      <NavigationContainer>
-        {/* INTEGRATION STEP 4: Wrap this with an auth check:
-              isAuthenticated ? <AppNavigator /> : <AuthNavigator />
-            Add `isAuthenticated` state to App (true when authToken is set).
-            AuthNavigator lives in src/navigation/AuthNavigator.tsx — see STEP 1. */}
-        <AppNavigator />
-      </NavigationContainer>
-    </CarProvider>
+    <SafeAreaProvider>
+      {!ready ? (
+        <SplashScreen />
+      ) : (
+        <CarProvider>
+          <MarketProvider>
+            <AIAssistantProvider>
+              <NavigationContainer>
+                {/* INTEGRATION STEP 4: Wrap this with an auth check:
+                      isAuthenticated ? <AppNavigator /> : <AuthNavigator />
+                    Add `isAuthenticated` state to App (true when authToken is set).
+                    AuthNavigator lives in src/navigation/AuthNavigator.tsx — see STEP 1. */}
+                <AppNavigator />
+              </NavigationContainer>
+            </AIAssistantProvider>
+          </MarketProvider>
+        </CarProvider>
+      )}
+    </SafeAreaProvider>
   );
 };
 

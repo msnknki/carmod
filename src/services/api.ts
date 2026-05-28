@@ -1,4 +1,14 @@
-const API_BASE = 'http://10.0.2.2:3000/api'; // Android emulator → localhost
+import {Platform} from 'react-native';
+import Config from 'react-native-config';
+
+const DEFAULT_DEV_API_BASE =
+  Platform.OS === 'android'
+    ? 'http://10.0.2.2:3000/api' // Android emulator -> host machine localhost
+    : 'http://localhost:3000/api';
+
+// For physical phones and production, set API_BASE_URL in a local .env file.
+const API_BASE = (Config.API_BASE_URL || DEFAULT_DEV_API_BASE).replace(/\/$/, '');
+const REQUEST_TIMEOUT_MS = 8000;
 
 const GUEST_EMAIL = 'guest@carmodapp.local';
 const GUEST_PASSWORD = 'guestpass123';
@@ -26,11 +36,14 @@ const getHeaders = () => {
 async function refreshGuestToken(): Promise<void> {
   if (refreshing) return;
   refreshing = true;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({email: GUEST_EMAIL, password: GUEST_PASSWORD}),
+      signal: controller.signal,
     });
     if (res.ok) {
       const data = await res.json();
@@ -39,18 +52,29 @@ async function refreshGuestToken(): Promise<void> {
   } catch {
     // backend unreachable — leave token as-is
   } finally {
+    clearTimeout(timeoutId);
     refreshing = false;
   }
 }
 
 async function request(url: string, options: RequestInit, retry = true): Promise<any> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   let res: Response;
   try {
-    res = await fetch(url, options);
-  } catch {
+    res = await fetch(url, {...options, signal: controller.signal});
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(
+        'Request timed out — make sure the backend is running (npm start in backend/)',
+      );
+    }
     throw new Error(
       'Network error — check your connection and make sure the backend is running',
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (res.status === 401 && retry) {

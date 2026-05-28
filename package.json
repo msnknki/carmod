@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "android:apk:debug": "cd android && gradlew.bat assembleDebug",
+    "android:apk:release": "cd android && gradlew.bat assembleRelease",
+    "android:install:debug": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",

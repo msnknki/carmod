@@ -36,6 +36,8 @@ import {
   Wind,
   Trash2,
   ChevronRight,
+  ChevronDown,
+  Check,
   XCircle,
 } from 'lucide-react-native';
 import {colors} from '../../theme';
@@ -82,6 +84,9 @@ const ICON_MAP: Record<string, LucideIcon> = {
   pipe: Wind,
   'car-light-dimmed': Lightbulb,
   'car-seat': Armchair,
+  'image-plus': Camera,
+  'chevron-down': ChevronDown,
+  check: Check,
 };
 
 export type AppIconName = keyof typeof ICON_MAP;

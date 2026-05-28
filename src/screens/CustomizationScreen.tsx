@@ -20,9 +20,12 @@ import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import {colors} from '../theme';
 import styles from './styles/CustomizationScreen.styles';
 import {useCar} from '../context/CarContext';
+import {useMarket} from '../context/MarketContext';
+import {getMarket} from '../data/markets';
 import {api} from '../services/api';
 import AppIcon from '../components/ui/AppIcon';
 import PressableScale from '../components/ui/PressableScale';
+import MarketSelector from '../components/MarketSelector';
 import type {RootTabParamList} from '../types';
 
 type PartResult = {
@@ -44,6 +47,9 @@ type ShopResult = {
   totalRatings: number;
   isOpen: boolean | null;
   source: string;
+  latitude?: number;
+  longitude?: number;
+  mapsUrl?: string;
 };
 
 type AIPart = {
@@ -63,14 +69,6 @@ type ChatMessage = {
   content: string;
   parts?: AIPart[];
 };
-
-const COUNTRIES = [
-  {code: 'LB', label: 'Lebanon'},
-  {code: 'AE', label: 'UAE'},
-  {code: 'US', label: 'USA'},
-  {code: 'GB', label: 'UK'},
-  {code: 'DE', label: 'Germany'},
-];
 
 const PART_CATEGORIES = [
   {id: 'wheels', label: 'Wheels', icon: 'tire', query: 'alloy wheels'},
@@ -112,6 +110,7 @@ const getSourceColor = (source: string) => {
 const CustomizationScreen = () => {
   const route = useRoute<RouteProp<RootTabParamList, 'Customization'>>();
   const {selectedCar} = useCar();
+  const {countryCode} = useMarket();
   const [activeTab, setActiveTab] = useState<Tab>('parts');
 
   // Parts state
@@ -154,7 +153,6 @@ const CustomizationScreen = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatConversationId, setChatConversationId] = useState<number | null>(null);
-  const [country, setCountry] = useState('LB');
   const chatListRef = useRef<FlatList>(null);
 
   const searchParts = async (searchQuery?: string) => {
@@ -168,7 +166,7 @@ const CustomizationScreen = () => {
     setPartsLoading(true);
     setPartsError('');
     try {
-      const body: Record<string, string> = {query: q, countryCode: country};
+      const body: Record<string, string> = {query: q, countryCode};
       if (selectedCar) {
         body.carMake = selectedCar.make;
         body.carModel = selectedCar.model;
@@ -189,8 +187,10 @@ const CustomizationScreen = () => {
     setShopsLoading(true);
     setShopsError('');
     try {
-      // Use placeholder coords — real app would use Geolocation API
-      const data = await api.get('/shops/nearby?latitude=37.7749&longitude=-122.4194');
+      const market = getMarket(countryCode);
+      const data = await api.get(
+        `/shops/nearby?latitude=${market.latitude}&longitude=${market.longitude}&countryCode=${countryCode}`,
+      );
       setShops(data.results || []);
     } catch (err: any) {
       setShopsError(err.message || 'Search failed');
@@ -214,6 +214,12 @@ const CustomizationScreen = () => {
       searchShops();
     }
   }, [route.params?.tab]);
+
+  useEffect(() => {
+    if (activeTab === 'shops') {
+      searchShops();
+    }
+  }, [countryCode, activeTab]);
 
   const getEstimate = async () => {
     const chosen = buildParts;
@@ -409,7 +415,7 @@ const CustomizationScreen = () => {
         message: text + contextNote,
         conversationId: chatConversationId,
         carId: selectedCar?.id,
-        countryCode: country,
+        countryCode,
       });
 
       if (res.conversationId && !chatConversationId) {
@@ -479,8 +485,17 @@ const CustomizationScreen = () => {
     );
   };
 
+  const openShopOnMaps = (item: ShopResult) => {
+    const url =
+      item.mapsUrl ||
+      (item.latitude != null && item.longitude != null
+        ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.name} ${item.address}`)}`);
+    Linking.openURL(url);
+  };
+
   const renderShopItem = ({item}: {item: ShopResult}) => (
-    <View style={styles.card}>
+    <PressableScale style={styles.card} onPress={() => openShopOnMaps(item)}>
       <View style={styles.cardHeader}>
         <Text style={styles.partTitle}>{item.name}</Text>
         {item.isOpen !== null && (
@@ -497,14 +512,18 @@ const CustomizationScreen = () => {
       </View>
       <Text style={styles.shopAddress}>{item.address}</Text>
       {item.rating !== null && (
-        <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4}}>
+        <View style={styles.shopRatingRow}>
           <AppIcon name="star" size={14} color={colors.primary} />
           <Text style={styles.shopRating}>
             {item.rating} ({item.totalRatings} reviews)
           </Text>
         </View>
       )}
-    </View>
+      <View style={styles.mapsLinkRow}>
+        <AppIcon name="map-marker-radius" size={16} color={colors.primary} />
+        <Text style={styles.mapsLinkText}>Open in Google Maps</Text>
+      </View>
+    </PressableScale>
   );
 
   return (
@@ -523,7 +542,7 @@ const CustomizationScreen = () => {
 
       {/* Tab bar */}
       <View style={styles.tabBar}>
-        <TouchableOpacity
+        <PressableScale
           style={[styles.tab, activeTab === 'parts' && styles.tabActive]}
           onPress={() => setActiveTab('parts')}>
           <Text
@@ -533,8 +552,8 @@ const CustomizationScreen = () => {
             ]}>
             Parts
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </PressableScale>
+        <PressableScale
           style={[styles.tab, activeTab === 'shops' && styles.tabActive]}
           onPress={() => {
             setActiveTab('shops');
@@ -549,8 +568,8 @@ const CustomizationScreen = () => {
             ]}>
             Shops
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </PressableScale>
+        <PressableScale
           style={[styles.tab, activeTab === 'preview' && styles.tabActive]}
           onPress={() => setActiveTab('preview')}>
           <Text
@@ -560,12 +579,13 @@ const CustomizationScreen = () => {
             ]}>
             Preview
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       {/* Parts tab */}
       {activeTab === 'parts' && (
         <View style={styles.content}>
+          <MarketSelector />
           <View style={styles.searchRow}>
             <TextInput
               style={styles.searchInput}
@@ -737,21 +757,28 @@ const CustomizationScreen = () => {
                       {estimate.items?.map((item: any, i: number) => (
                         <View key={i} style={styles.estimateRow}>
                           <Text style={styles.estimateItemName}>{item.name}</Text>
-                          <Text style={styles.estimateItemCost}>
-                            Parts: ${item.partsCostLow}-${item.partsCostHigh}
-                          </Text>
-                          <Text style={styles.estimateItemCost}>
-                            Labor: ${item.laborCostLow}-${item.laborCostHigh} ({item.laborHours}h)
-                          </Text>
+                          <View style={styles.estimateCostLine}>
+                            <Text style={styles.estimateCostLabel}>Parts</Text>
+                            <Text style={styles.estimateItemCost}>
+                              ${item.partsCostLow} – ${item.partsCostHigh}
+                            </Text>
+                          </View>
+                          <View style={styles.estimateCostLine}>
+                            <Text style={styles.estimateCostLabel}>Labor</Text>
+                            <Text style={styles.estimateItemCost}>
+                              ${item.laborCostLow} – ${item.laborCostHigh}
+                              {item.laborHours ? ` · ${item.laborHours}h` : ''}
+                            </Text>
+                          </View>
                           {item.notes ? (
                             <Text style={styles.estimateNote}>{item.notes}</Text>
                           ) : null}
                         </View>
                       ))}
                       <View style={styles.estimateTotalRow}>
-                        <Text style={styles.estimateTotalLabel}>Grand Total</Text>
+                        <Text style={styles.estimateTotalLabel}>Grand total</Text>
                         <Text style={styles.estimateTotalValue}>
-                          ${estimate.grandTotalLow} - ${estimate.grandTotalHigh}
+                          ${estimate.grandTotalLow} – ${estimate.grandTotalHigh}
                         </Text>
                       </View>
                       {estimate.disclaimer ? (
@@ -769,6 +796,7 @@ const CustomizationScreen = () => {
       {/* Shops tab */}
       {activeTab === 'shops' && (
         <View style={styles.content}>
+          <MarketSelector />
           {shopsError !== '' && (
             <Text style={styles.errorText}>{shopsError}</Text>
           )}
@@ -783,7 +811,12 @@ const CustomizationScreen = () => {
               <View style={styles.emptyIconWrap}>
                 <AppIcon name="map-marker-radius" size={36} color={colors.primary} />
               </View>
-              <Text style={styles.emptyText}>Finding nearby shops...</Text>
+              <Text style={styles.emptyText}>
+                Finding car parts & service shops in {getMarket(countryCode).label}…
+              </Text>
+              <PressableScale style={styles.refreshShopsBtn} onPress={searchShops}>
+                <Text style={styles.refreshShopsText}>Search shops</Text>
+              </PressableScale>
             </View>
           ) : (
             <FlatList
@@ -1012,12 +1045,11 @@ const CustomizationScreen = () => {
       )}
 
       {/* Floating AI button */}
-      <TouchableOpacity
-        style={styles.aiFab}
-        onPress={() => setChatOpen(true)}
-        activeOpacity={0.85}>
+      <PressableScale
+        style={[styles.aiFab, {alignSelf: 'auto'}]}
+        onPress={() => setChatOpen(true)}>
         <AppIcon name="robot-outline" size={28} color="#0B0B0B" />
-      </TouchableOpacity>
+      </PressableScale>
 
       {/* AI Chat Modal */}
       <Modal
@@ -1036,26 +1068,6 @@ const CustomizationScreen = () => {
               <TouchableOpacity style={styles.chatCloseBtn} onPress={() => setChatOpen(false)}>
                 <AppIcon name="close" size={22} color={colors.text} />
               </TouchableOpacity>
-            </View>
-
-            {/* Market selector */}
-            <View style={styles.chatLocationBar}>
-              <Text style={styles.chatLocationLabel}>Market:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.chatLocationChips}>
-                  {COUNTRIES.map(c => (
-                    <TouchableOpacity
-                      key={c.code}
-                      style={[styles.chatLocationChip, country === c.code && styles.chatLocationChipSelected]}
-                      onPress={() => setCountry(c.code)}
-                      activeOpacity={0.7}>
-                      <Text style={[styles.chatLocationChipText, country === c.code && styles.chatLocationChipTextSelected]}>
-                        {c.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
             </View>
 
             {/* Messages */}

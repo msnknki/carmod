@@ -1,7 +1,6 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {
   Text,
-  TextInput,
   FlatList,
   View,
   Alert,
@@ -17,13 +16,19 @@ import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import {colors, spacing} from '../theme';
 import {useCar} from '../context/CarContext';
+import {useAIAssistant} from '../context/AIAssistantContext';
 import styles from './styles/HomeScreen.styles';
 import AppIcon from '../components/ui/AppIcon';
 import PressableScale from '../components/ui/PressableScale';
 import PrimaryButton from '../components/ui/PrimaryButton';
+import DropdownPicker from '../components/ui/DropdownPicker';
+import {
+  CAR_MAKES,
+  CAR_MODELS,
+  YEAR_OPTIONS,
+  type CarMake,
+} from '../data/carCatalog';
 import type {RootTabParamList} from '../types';
-
-const currentYear = new Date().getFullYear();
 
 const QUICK_ACTIONS = [
   {
@@ -46,7 +51,7 @@ const QUICK_ACTIONS = [
     title: 'AI Assistant',
     subtitle: 'Ask anything about your car',
     icon: 'robot-outline' as const,
-    tab: 'AI' as const,
+    action: 'ai' as const,
   },
   {
     id: 'shops',
@@ -61,12 +66,18 @@ const QUICK_ACTIONS = [
 const HomeScreen = () => {
   const navigation =
     useNavigation<BottomTabNavigationProp<RootTabParamList>>();
+  const {openAssistant} = useAIAssistant();
   const {cars, selectedCar, addCar, removeCar, selectCar, updateCarImage} = useCar();
-  const [make, setMake] = useState('');
+  const [make, setMake] = useState<CarMake | ''>('');
   const [model, setModel] = useState('');
-  const [year, setYear] = useState('');
+  const [year, setYear] = useState<number | ''>('');
   const [imageUri, setImageUri] = useState<string | undefined>();
   const [showForm, setShowForm] = useState(false);
+
+  const modelOptions = useMemo(
+    () => (make ? CAR_MODELS[make] : []),
+    [make],
+  );
 
   const pickHeroImage = () => {
     if (!selectedCar) return;
@@ -118,31 +129,15 @@ const HomeScreen = () => {
   };
 
   const handleAddCar = () => {
-    const trimmedMake = make.trim();
-    const trimmedModel = model.trim();
-    const parsedYear = parseInt(year, 10);
-
-    if (!trimmedMake || !trimmedModel || !year) {
-      Alert.alert('Missing Info', 'Please fill in make, model, and year.');
-      return;
-    }
-
-    if (
-      isNaN(parsedYear) ||
-      parsedYear < 1900 ||
-      parsedYear > currentYear + 1
-    ) {
-      Alert.alert(
-        'Invalid Year',
-        `Year must be between 1900 and ${currentYear + 1}.`,
-      );
+    if (!make || !model || year === '') {
+      Alert.alert('Missing Info', 'Please select make, model, and year.');
       return;
     }
 
     addCar({
-      make: trimmedMake,
-      model: trimmedModel,
-      year: parsedYear,
+      make,
+      model,
+      year: year as number,
       imageUri,
     });
 
@@ -153,10 +148,14 @@ const HomeScreen = () => {
     setShowForm(false);
   };
 
-  const navigateQuick = (action: (typeof QUICK_ACTIONS)[0]) => {
-    if (action.params) {
+  const navigateQuick = (action: (typeof QUICK_ACTIONS)[number]) => {
+    if ('action' in action && action.action === 'ai') {
+      openAssistant();
+      return;
+    }
+    if ('params' in action && action.params) {
       navigation.navigate(action.tab, action.params);
-    } else {
+    } else if ('tab' in action) {
       navigation.navigate(action.tab);
     }
   };
@@ -247,28 +246,30 @@ const HomeScreen = () => {
           {showForm && (
             <View style={styles.form}>
               <Text style={styles.formTitle}>Add Your Car</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Make (e.g. BMW, Porsche)"
-                placeholderTextColor={colors.textMuted}
+              <DropdownPicker
+                label="Make"
                 value={make}
-                onChangeText={setMake}
+                options={[...CAR_MAKES]}
+                placeholder="Select make"
+                onSelect={value => {
+                  setMake(value);
+                  setModel('');
+                }}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Model (e.g. 911, C63)"
-                placeholderTextColor={colors.textMuted}
+              <DropdownPicker
+                label="Model"
                 value={model}
-                onChangeText={setModel}
+                options={modelOptions}
+                placeholder={make ? 'Select model' : 'Select make first'}
+                disabled={!make}
+                onSelect={setModel}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Year (e.g. 2022)"
-                placeholderTextColor={colors.textMuted}
+              <DropdownPicker
+                label="Year"
                 value={year}
-                onChangeText={setYear}
-                keyboardType="numeric"
-                maxLength={4}
+                options={YEAR_OPTIONS}
+                placeholder="Select year"
+                onSelect={setYear}
               />
               <PressableScale style={styles.photoButton} onPress={pickImage}>
                 {imageUri ? (
@@ -330,6 +331,7 @@ const HomeScreen = () => {
                 keyExtractor={item => item.id}
                 renderItem={({item}) => (
                   <PressableScale
+                    centerContent={false}
                     style={[
                       styles.carCard,
                       selectedCar?.id === item.id && styles.carCardSelected,
@@ -349,6 +351,7 @@ const HomeScreen = () => {
                         ],
                       )
                     }>
+                    <View style={styles.carCardRow}>
                     {item.imageUri ? (
                       <Image source={{uri: item.imageUri}} style={styles.cardThumb} />
                     ) : (
@@ -365,6 +368,7 @@ const HomeScreen = () => {
                           <Text style={styles.activeLabel}>ACTIVE</Text>
                         </View>
                       )}
+                    </View>
                     </View>
                   </PressableScale>
                 )}

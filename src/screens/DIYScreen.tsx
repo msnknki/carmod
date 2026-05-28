@@ -192,8 +192,10 @@ const DIYScreen = () => {
                     key={item.value}
                     style={styles.quickChip}
                     onPress={() => diagnose(item.value)}>
-                    <AppIcon name={item.icon} size={20} color={colors.primary} />
-                    <Text style={styles.quickChipText}>{item.label}</Text>
+                    <View style={styles.quickChipInner}>
+                      <AppIcon name={item.icon} size={22} color={colors.primary} />
+                      <Text style={styles.quickChipText}>{item.label}</Text>
+                    </View>
                   </PressableScale>
                 ))}
               </View>
@@ -281,18 +283,22 @@ const DIYScreen = () => {
               {(result.estimatedCost.parts || result.estimatedCost.labor) && (
                 <View style={styles.card}>
                   <CardHeader icon="cash" title="Estimated cost" />
-                  <View style={styles.costRow}>
-                    <Text style={styles.costLabel}>Parts</Text>
-                    <Text style={styles.costValue}>
-                      {result.estimatedCost.parts}
-                    </Text>
-                  </View>
-                  <View style={styles.costRow}>
-                    <Text style={styles.costLabel}>Labor</Text>
-                    <Text style={styles.costValue}>
-                      {result.estimatedCost.labor}
-                    </Text>
-                  </View>
+                  {!!result.estimatedCost.parts && (
+                    <View style={styles.costBlock}>
+                      <Text style={styles.costLabel}>Parts</Text>
+                      <Text style={styles.costValue}>
+                        {result.estimatedCost.parts}
+                      </Text>
+                    </View>
+                  )}
+                  {!!result.estimatedCost.labor && (
+                    <View style={styles.costBlock}>
+                      <Text style={styles.costLabel}>Labor</Text>
+                      <Text style={styles.costValue}>
+                        {result.estimatedCost.labor}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               )}
 
