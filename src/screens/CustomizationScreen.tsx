@@ -22,7 +22,8 @@ import styles from './styles/CustomizationScreen.styles';
 import {useCar} from '../context/CarContext';
 import {useMarket} from '../context/MarketContext';
 import {getMarket} from '../data/markets';
-import {api} from '../services/api';
+import {api, IMAGE_REQUEST_TIMEOUT_MS} from '../services/api';
+import {imageUriToBase64DataUrl} from '../utils/imageUriToBase64';
 import AppIcon from '../components/ui/AppIcon';
 import PressableScale from '../components/ui/PressableScale';
 import CarSelector from '../components/CarSelector';
@@ -154,6 +155,7 @@ const CustomizationScreen = () => {
   const [imageError, setImageError] = useState('');
   const [imageStatus, setImageStatus] = useState('');
   const [previewImageUri, setPreviewImageUri] = useState<string | undefined>();
+  const [previewImageDataUrl, setPreviewImageDataUrl] = useState<string | undefined>();
   const [refinementText, setRefinementText] = useState('');
   const [refinementHistory, setRefinementHistory] = useState<string[]>([]);
 
@@ -281,36 +283,39 @@ const CustomizationScreen = () => {
     }
   };
 
-  const uriToBase64DataUrl = async (uri: string): Promise<string | null> => {
-    try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
-    }
-  };
-
   const pickPreviewImage = () => {
     Alert.alert('Car Photo', 'Choose a photo for this preview', [
       {
         text: 'Camera',
         onPress: () =>
-          launchCamera({mediaType: 'photo', quality: 0.7}, res => {
-            if (res.assets?.[0]?.uri) setPreviewImageUri(res.assets[0].uri);
-          }),
+          launchCamera(
+            {mediaType: 'photo', quality: 0.7, maxWidth: 1280, includeBase64: true},
+            res => {
+              const asset = res.assets?.[0];
+              if (asset?.uri) {
+                setPreviewImageUri(asset.uri);
+                setPreviewImageDataUrl(
+                  asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined,
+                );
+              }
+            },
+          ),
       },
       {
         text: 'Photo Library',
         onPress: () =>
-          launchImageLibrary({mediaType: 'photo', quality: 0.7}, res => {
-            if (res.assets?.[0]?.uri) setPreviewImageUri(res.assets[0].uri);
-          }),
+          launchImageLibrary(
+            {mediaType: 'photo', quality: 0.7, maxWidth: 1280, includeBase64: true},
+            res => {
+              const asset = res.assets?.[0];
+              if (asset?.uri) {
+                setPreviewImageUri(asset.uri);
+                setPreviewImageDataUrl(
+                  asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined,
+                );
+              }
+            },
+          ),
       },
       {text: 'Cancel', style: 'cancel'},
     ]);
@@ -323,7 +328,7 @@ const CustomizationScreen = () => {
     }
     setImageLoading(true);
     setImageError('');
-    setImageStatus('Generating preview — this may take up to 60 seconds...');
+    setImageStatus('Generating preview — may take up to 2 minutes...');
     setGeneratedImageUrl(null);
     setRefinementHistory([]);
     try {
@@ -331,22 +336,44 @@ const CustomizationScreen = () => {
 
       let carImageUrl: string | undefined;
       const imageSource = previewImageUri || selectedCar.imageUri;
-      if (imageSource) {
+      if (previewImageDataUrl) {
+        carImageUrl = previewImageDataUrl;
+      } else if (imageSource) {
         setImageStatus('Processing car photo...');
-        carImageUrl = (await uriToBase64DataUrl(imageSource)) ?? undefined;
+        carImageUrl = (await imageUriToBase64DataUrl(imageSource)) ?? undefined;
       }
 
-      const data = await api.post('/image/generate', {
-        carMake: selectedCar.make,
-        carModel: selectedCar.model,
-        carYear: String(selectedCar.year),
-        parts: chosenParts.map(p => p.title),
-        description: imageDescription.trim() || undefined,
-        imageUrl: carImageUrl,
-      });
+      if (imageSource && !carImageUrl) {
+        setImageError(
+          'Could not read your car photo. Tap the thumbnail and pick the photo again.',
+        );
+        return;
+      }
+
+      if (!carImageUrl) {
+        setImageError('Add a car photo first — tap the camera thumbnail above the description.');
+        return;
+      }
+
+      const data = await api.post(
+        '/image/generate',
+        {
+          carMake: selectedCar.make,
+          carModel: selectedCar.model,
+          carYear: String(selectedCar.year),
+          parts: chosenParts.map(p => p.title),
+          description: imageDescription.trim() || undefined,
+          imageUrl: carImageUrl,
+        },
+        {timeoutMs: IMAGE_REQUEST_TIMEOUT_MS},
+      );
       if (data.status === 'succeeded' && data.imageUrl) {
         setGeneratedImageUrl(data.imageUrl);
-        setImageStatus('Done!');
+        if (data.usedReferenceImage === false) {
+          setImageStatus('Done (no reference photo was used — result may look different)');
+        } else {
+          setImageStatus(`Done! (${data.provider || 'AI edit'})`);
+        }
       } else if (data.status === 'mock') {
         setImageStatus(data.message || 'Mock mode — no Replicate token configured');
       } else {
@@ -365,17 +392,22 @@ const CustomizationScreen = () => {
     const fix = refinementText.trim();
     setImageLoading(true);
     setImageError('');
-    setImageStatus('Applying fix...');
+    setImageStatus('Applying fix — may take up to 2 minutes...');
 
     try {
-      const data = await api.post('/image/generate', {
-        carMake: selectedCar?.make,
-        carModel: selectedCar?.model,
-        carYear: String(selectedCar?.year),
-        parts: [],
-        description: `${fix}. Keep everything else exactly the same.`,
-        imageUrl: generatedImageUrl,
-      });
+      const data = await api.post(
+        '/image/generate',
+        {
+          carMake: selectedCar?.make,
+          carModel: selectedCar?.model,
+          carYear: String(selectedCar?.year),
+          parts: [],
+          description: fix,
+          imageUrl: generatedImageUrl,
+          refine: true,
+        },
+        {timeoutMs: IMAGE_REQUEST_TIMEOUT_MS},
+      );
       if (data.status === 'succeeded' && data.imageUrl) {
         setGeneratedImageUrl(data.imageUrl);
         setRefinementHistory(prev => [...prev, fix]);
@@ -987,7 +1019,7 @@ const CustomizationScreen = () => {
             </TouchableOpacity>
             <TextInput
               style={[styles.descInput, styles.descInputFlex]}
-              placeholder="Describe your mods (e.g. matte black wrap, lowered suspension)"
+              placeholder="Describe changes only (e.g. change paint to black — keeps same photo & background)"
               placeholderTextColor={colors.textSecondary}
               value={imageDescription}
               onChangeText={setImageDescription}
@@ -1043,7 +1075,7 @@ const CustomizationScreen = () => {
               )}
               <TextInput
                 style={styles.descInput}
-                placeholder="What needs fixing? (e.g. change color to dark blue, make wheels gold)"
+                placeholder="Small edits only (e.g. change paint to black, gold wheels — keeps same scene)"
                 placeholderTextColor={colors.textSecondary}
                 value={refinementText}
                 onChangeText={setRefinementText}

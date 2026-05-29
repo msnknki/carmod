@@ -26,6 +26,8 @@ if (__DEV__) {
 export const getApiBaseUrl = () => API_BASE;
 
 const REQUEST_TIMEOUT_MS = 20000;
+/** Image generation (fal.ai + Render cold start) can take 60–120s. */
+export const IMAGE_REQUEST_TIMEOUT_MS = 120_000;
 
 const GUEST_EMAIL = 'guest@carmodapp.local';
 const GUEST_PASSWORD = 'guestpass123';
@@ -74,17 +76,25 @@ async function refreshGuestToken(): Promise<void> {
   }
 }
 
-async function request(url: string, options: RequestInit, retry = true): Promise<any> {
+async function request(
+  url: string,
+  options: RequestInit,
+  retry = true,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<any> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
     res = await fetch(url, {...options, signal: controller.signal});
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {
+      const seconds = Math.round(timeoutMs / 1000);
       throw new Error(
-        'Request timed out — the server may be waking up (Render free tier) or unreachable',
+        timeoutMs > REQUEST_TIMEOUT_MS
+          ? `Image request timed out after ${seconds}s — try again; Render may still be waking up`
+          : 'Request timed out — the server may be waking up (Render free tier) or unreachable',
       );
     }
     throw new Error(
@@ -100,7 +110,7 @@ async function request(url: string, options: RequestInit, retry = true): Promise
       ...options,
       headers: getHeaders(),
     };
-    return request(url, retryOptions, false);
+    return request(url, retryOptions, false, timeoutMs);
   }
 
   let data: any;
@@ -120,12 +130,21 @@ async function request(url: string, options: RequestInit, retry = true): Promise
 }
 
 export const api = {
-  async post(endpoint: string, body: object) {
-    return request(`${API_BASE}${endpoint}`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(body),
-    });
+  async post(
+    endpoint: string,
+    body: object,
+    options?: {timeoutMs?: number},
+  ) {
+    return request(
+      `${API_BASE}${endpoint}`,
+      {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(body),
+      },
+      true,
+      options?.timeoutMs ?? REQUEST_TIMEOUT_MS,
+    );
   },
 
   async get(endpoint: string) {
