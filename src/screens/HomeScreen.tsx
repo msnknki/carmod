@@ -14,10 +14,11 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import type {BottomTabNavigationProp} from '@react-navigation/bottom-tabs';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
-import {colors, spacing} from '../theme';
+import {spacing} from '../theme';
+import {useTheme} from '../context/ThemeContext';
 import {useCar} from '../context/CarContext';
 import {useAIAssistant} from '../context/AIAssistantContext';
-import styles from './styles/HomeScreen.styles';
+import {createHomeScreenStyles} from './styles/HomeScreen.styles';
 import AppIcon from '../components/ui/AppIcon';
 import PressableScale from '../components/ui/PressableScale';
 import PrimaryButton from '../components/ui/PrimaryButton';
@@ -66,6 +67,8 @@ const QUICK_ACTIONS = [
 const HomeScreen = () => {
   const navigation =
     useNavigation<BottomTabNavigationProp<RootTabParamList>>();
+  const {colors} = useTheme();
+  const styles = useMemo(() => createHomeScreenStyles(colors), [colors]);
   const {openAssistant} = useAIAssistant();
   const {cars, selectedCar, addCar, removeCar, resetGarage, selectCar, updateCarImage} =
     useCar();
@@ -297,7 +300,7 @@ const HomeScreen = () => {
                   </View>
                 )}
                 <View style={styles.heroImageEditBtn}>
-                  <AppIcon name="camera-plus-outline" size={16} color="#fff" />
+                  <AppIcon name="camera-plus-outline" size={16} color={colors.onAiAssistant} />
                 </View>
               </TouchableOpacity>
               <View style={styles.heroOverlay}>
@@ -306,14 +309,6 @@ const HomeScreen = () => {
                   {selectedCar.year} {selectedCar.make} {selectedCar.model}
                 </Text>
                 <View style={styles.statsRow}>
-                  <View style={styles.statPill}>
-                    <Text style={styles.statValue}>—</Text>
-                    <Text style={styles.statLabel}>Mileage</Text>
-                  </View>
-                  <View style={styles.statPill}>
-                    <Text style={styles.statValue}>Good</Text>
-                    <Text style={styles.statLabel}>Health</Text>
-                  </View>
                   <View style={styles.statPill}>
                     <Text style={styles.statValue}>{cars.length}</Text>
                     <Text style={styles.statLabel}>In garage</Text>

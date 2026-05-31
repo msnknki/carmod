@@ -5,7 +5,6 @@ const db = require('../config/database');
 
 const router = express.Router();
 
-// POST /api/auth/register
 router.post('/register', (req, res) => {
   const { email, password, displayName, country } = req.body;
 
@@ -33,7 +32,6 @@ router.post('/register', (req, res) => {
   });
 });
 
-// POST /api/auth/login
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
 

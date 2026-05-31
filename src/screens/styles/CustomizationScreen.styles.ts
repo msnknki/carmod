@@ -1,7 +1,9 @@
 import {StyleSheet} from 'react-native';
-import {colors, fontSize, radius, spacing} from '../../theme';
+import type {ColorPalette} from '../../theme/colors';
+import {fontSize, radius, spacing} from '../../theme';
 
-export default StyleSheet.create({
+export const createCustomizationScreenStyles = (colors: ColorPalette) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -72,7 +74,7 @@ export default StyleSheet.create({
     textAlign: 'center',
   },
   tabTextActive: {
-    color: '#0B0B0B',
+    color: colors.onPrimary,
     fontWeight: '700',
   },
   content: {
@@ -207,7 +209,19 @@ export default StyleSheet.create({
   },
   list: {
     paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  partsBody: {
+    flex: 1,
+    minHeight: 0,
+  },
+  partsList: {
+    flex: 1,
+  },
+  buildFooter: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   card: {
     backgroundColor: colors.surface,
@@ -256,7 +270,7 @@ export default StyleSheet.create({
     paddingVertical: 3,
   },
   sourceBadgeText: {
-    color: '#fff',
+    color: colors.onAiAssistant,
     fontSize: fontSize.sm,
     fontWeight: '700',
   },
@@ -391,87 +405,6 @@ export default StyleSheet.create({
     fontSize: fontSize.xl,
     fontWeight: 'bold',
   },
-  estimateBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 18,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  estimateBtnText: {
-    color: '#0B0B0B',
-    fontSize: fontSize.md,
-    fontWeight: '700',
-  },
-  estimateCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  estimateTitle: {
-    color: colors.text,
-    fontSize: fontSize.lg,
-    fontWeight: 'bold',
-    marginBottom: spacing.sm,
-  },
-  estimateRow: {
-    marginBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: spacing.md,
-  },
-  estimateItemName: {
-    color: colors.text,
-    fontSize: fontSize.md,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
-  estimateCostLine: {
-    marginBottom: 6,
-  },
-  estimateCostLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 2,
-  },
-  estimateItemCost: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    lineHeight: 20,
-    flexWrap: 'wrap',
-  },
-  estimateNote: {
-    color: colors.warning,
-    fontSize: fontSize.sm,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  estimateTotalRow: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  estimateTotalLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 4,
-  },
-  estimateTotalValue: {
-    color: colors.primary,
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    lineHeight: 28,
-  },
   shopRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -498,7 +431,7 @@ export default StyleSheet.create({
     alignSelf: 'center',
   },
   refreshShopsText: {
-    color: '#0B0B0B',
+    color: colors.onPrimary,
     fontWeight: '700',
     fontSize: fontSize.md,
   },
@@ -577,7 +510,7 @@ export default StyleSheet.create({
     alignSelf: 'center',
   },
   shopStatusText: {
-    color: '#0B0B0B',
+    color: colors.onPrimary,
     fontSize: fontSize.xs,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -623,18 +556,13 @@ export default StyleSheet.create({
     width: '100%',
   },
   shopMapsBtnText: {
-    color: '#0B0B0B',
+    color: colors.onPrimary,
     fontSize: fontSize.md,
     fontWeight: '700',
   },
-  estimateDisclaimer: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontStyle: 'italic',
-    marginTop: spacing.sm,
-  },
   previewContent: {
-    paddingBottom: spacing.xl,
+    paddingBottom: 120,
+    flexGrow: 1,
   },
   previewHeading: {
     color: colors.text,
@@ -688,7 +616,7 @@ export default StyleSheet.create({
     marginTop: spacing.sm,
     fontStyle: 'italic',
   },
-  // Build parts modal
+
   buildPanel: {
     backgroundColor: colors.background,
     borderTopLeftRadius: 20,
@@ -773,13 +701,13 @@ export default StyleSheet.create({
     fontWeight: '700',
   },
   buildModalCloseBtn: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.aiAssistant,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: spacing.lg,
   },
   buildModalCloseBtnText: {
-    color: '#fff',
+    color: colors.onAiAssistant,
     fontWeight: '700',
     fontSize: fontSize.md,
   },
@@ -815,16 +743,17 @@ export default StyleSheet.create({
   },
   descInputFlex: {flex: 1, marginBottom: 0},
   generateBtn: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.aiAssistant,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
+    marginTop: spacing.xs,
   },
   generateBtnDisabled: {
     opacity: 0.6,
   },
   generateBtnText: {
-    color: '#fff',
+    color: colors.onAiAssistant,
     fontSize: fontSize.lg,
     fontWeight: '700',
   },
@@ -844,11 +773,27 @@ export default StyleSheet.create({
     marginTop: spacing.md,
     alignItems: 'center',
   },
+  imageHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: spacing.sm,
+  },
   imageLabel: {
     color: colors.text,
     fontSize: fontSize.md,
     fontWeight: '600',
-    marginBottom: spacing.sm,
+  },
+  downloadBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   generatedImage: {
     width: '100%',
@@ -881,7 +826,7 @@ export default StyleSheet.create({
   refineBtn: {
     backgroundColor: colors.primary,
   },
-  // Part detail modal
+
   detailOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -939,14 +884,14 @@ export default StyleSheet.create({
     marginBottom: spacing.md,
   },
   detailAddBtn: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.aiAssistant,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
   detailAddBtnText: {
-    color: '#fff',
+    color: colors.onAiAssistant,
     fontSize: fontSize.md,
     fontWeight: '700',
   },
@@ -972,27 +917,7 @@ export default StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.md,
   },
-  // Floating AI button
-  aiFab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    backgroundColor: '#7c3aed',
-    borderRadius: 28,
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 3},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  aiFabText: {
-    fontSize: 26,
-  },
-  // Chat modal
+
   chatModal: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -1028,7 +953,7 @@ export default StyleSheet.create({
     fontSize: fontSize.xl,
     fontWeight: 'bold',
   },
-  // Market selector inside chat
+
   chatLocationBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1055,18 +980,18 @@ export default StyleSheet.create({
     borderColor: colors.border,
   },
   chatLocationChipSelected: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
+    backgroundColor: colors.aiAssistant,
+    borderColor: colors.aiAssistant,
   },
   chatLocationChipText: {
     fontSize: 10,
     color: colors.textSecondary,
   },
   chatLocationChipTextSelected: {
-    color: '#fff',
+    color: colors.onAiAssistant,
     fontWeight: '600',
   },
-  // Chat messages
+
   chatMessageList: {
     padding: spacing.md,
     paddingBottom: spacing.sm,
@@ -1094,7 +1019,7 @@ export default StyleSheet.create({
     maxWidth: '85%',
   },
   chatUserBubble: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.aiAssistant,
     alignSelf: 'flex-end',
   },
   chatAiBubble: {
@@ -1112,7 +1037,7 @@ export default StyleSheet.create({
     fontSize: fontSize.md,
     lineHeight: 20,
   },
-  // AI-suggested parts in chat
+
   chatPartsSection: {
     alignSelf: 'stretch',
     marginTop: 4,
@@ -1172,17 +1097,17 @@ export default StyleSheet.create({
     marginHorizontal: spacing.sm,
   },
   chatPartAddBtn: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.aiAssistant,
     paddingVertical: 8,
     alignItems: 'center',
     marginTop: 4,
   },
   chatPartAddBtnText: {
     fontSize: 10,
-    color: '#fff',
+    color: colors.onAiAssistant,
     fontWeight: '600',
   },
-  // Chat loading + input
+
   chatLoadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1216,7 +1141,7 @@ export default StyleSheet.create({
     borderColor: colors.border,
   },
   chatSendBtn: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: colors.aiAssistant,
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: spacing.md,
@@ -1226,7 +1151,7 @@ export default StyleSheet.create({
     opacity: 0.5,
   },
   chatSendText: {
-    color: '#fff',
+    color: colors.onAiAssistant,
     fontWeight: 'bold',
     fontSize: fontSize.md,
   },

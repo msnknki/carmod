@@ -5,7 +5,6 @@ const db = require('../config/database');
 
 const router = express.Router();
 
-// POST /api/mechanics/register
 router.post('/register', (req, res) => {
   const { name, email, password, phone, location, specialization, carBrands } = req.body;
 
@@ -49,7 +48,6 @@ router.post('/register', (req, res) => {
   });
 });
 
-// POST /api/mechanics/login
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
 
@@ -82,7 +80,6 @@ router.post('/login', (req, res) => {
   });
 });
 
-// GET /api/mechanics — public list of all mechanics
 router.get('/', (_req, res) => {
   const rows = db.prepare(
     'SELECT id, name, phone, location, specialization, car_brands, created_at FROM mechanics ORDER BY created_at DESC'

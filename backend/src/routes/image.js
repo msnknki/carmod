@@ -4,7 +4,6 @@ const { generateModifiedCarImage, buildPrompt } = require('../services/replicate
 
 const router = express.Router();
 
-// POST /api/image/generate — generate a modified car image
 router.post('/generate', auth, async (req, res, next) => {
   try {
     const { carMake, carModel, carYear, parts, description, imageUrl, refine } = req.body;

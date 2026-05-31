@@ -4,7 +4,6 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/conversations — get all conversations for the user
 router.get('/', auth, (req, res) => {
   const conversations = db.prepare(
     'SELECT * FROM conversations WHERE user_id = ? ORDER BY updated_at DESC'
@@ -12,7 +11,6 @@ router.get('/', auth, (req, res) => {
   res.json(conversations);
 });
 
-// POST /api/conversations — create a new conversation
 router.post('/', auth, (req, res) => {
   const { carId, type, title } = req.body;
 
@@ -33,7 +31,6 @@ router.post('/', auth, (req, res) => {
   });
 });
 
-// GET /api/conversations/:id/messages — get messages for a conversation
 router.get('/:id/messages', auth, (req, res) => {
   const conversation = db.prepare(
     'SELECT * FROM conversations WHERE id = ? AND user_id = ?'
@@ -50,7 +47,6 @@ router.get('/:id/messages', auth, (req, res) => {
   res.json(messages);
 });
 
-// POST /api/conversations/:id/messages — add a message to a conversation
 router.post('/:id/messages', auth, (req, res) => {
   const { role, content } = req.body;
 

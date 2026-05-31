@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {
   ActivityIndicator,
   StyleProp,
@@ -8,7 +8,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import PressableScale from './PressableScale';
-import {colors, fontSize, radius, shadows} from '../../theme';
+import {useTheme} from '../../context/ThemeContext';
+import {fontSize, radius} from '../../theme';
 
 type Props = {
   label: string;
@@ -29,6 +30,53 @@ const PrimaryButton = ({
   style,
   textStyle,
 }: Props) => {
+  const {colors, shadows} = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        base: {
+          alignSelf: 'stretch',
+          borderRadius: radius.md,
+          paddingVertical: 16,
+          paddingHorizontal: 20,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        primary: {
+          backgroundColor: colors.primary,
+          ...shadows.glow,
+        },
+        ghost: {
+          backgroundColor: colors.surfaceLight,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        outline: {
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderColor: colors.borderStrong,
+        },
+        primaryText: {
+          color: colors.onPrimary,
+          fontSize: fontSize.lg,
+          fontWeight: '700',
+          letterSpacing: 0.3,
+        },
+        ghostText: {
+          color: colors.text,
+          fontSize: fontSize.lg,
+          fontWeight: '600',
+        },
+        outlineText: {
+          color: colors.primary,
+          fontSize: fontSize.lg,
+          fontWeight: '600',
+        },
+        disabled: {opacity: 0.45},
+      }),
+    [colors, shadows],
+  );
+
   const isDisabled = disabled || loading;
 
   return (
@@ -45,7 +93,7 @@ const PrimaryButton = ({
       ]}>
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? '#0B0B0B' : colors.primary}
+          color={variant === 'primary' ? colors.onPrimary : colors.primary}
         />
       ) : (
         <Text
@@ -61,47 +109,5 @@ const PrimaryButton = ({
     </PressableScale>
   );
 };
-
-const styles = StyleSheet.create({
-  base: {
-    alignSelf: 'stretch',
-    borderRadius: radius.md,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primary: {
-    backgroundColor: colors.primary,
-    ...shadows.glow,
-  },
-  ghost: {
-    backgroundColor: colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  primaryText: {
-    color: '#0B0B0B',
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  ghostText: {
-    color: colors.text,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-  },
-  outlineText: {
-    color: colors.primary,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-  },
-  disabled: {opacity: 0.45},
-});
 
 export default PrimaryButton;

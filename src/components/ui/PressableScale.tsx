@@ -12,7 +12,7 @@ type Props = PressableProps & {
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
   scaleTo?: number;
-  /** When false, children control layout (e.g. horizontal list rows). */
+
   centerContent?: boolean;
 };
 

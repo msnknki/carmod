@@ -4,13 +4,11 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/cars — get all cars for the logged-in user
 router.get('/', auth, (req, res) => {
   const cars = db.prepare('SELECT * FROM cars WHERE user_id = ? ORDER BY created_at DESC').all(req.userId);
   res.json(cars);
 });
 
-// POST /api/cars — add a new car
 router.post('/', auth, (req, res) => {
   const { make, model, year, imageUri } = req.body;
 
@@ -32,7 +30,6 @@ router.post('/', auth, (req, res) => {
   });
 });
 
-// PATCH /api/cars/:id — update car image
 router.patch('/:id', auth, (req, res) => {
   const { imageUri } = req.body;
   const car = db.prepare('SELECT * FROM cars WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
@@ -41,7 +38,6 @@ router.patch('/:id', auth, (req, res) => {
   res.json({ id: req.params.id, image_uri: imageUri ?? null });
 });
 
-// DELETE /api/cars — remove all cars (and related projects/conversations) for user
 router.delete('/', auth, (req, res) => {
   const userId = req.userId;
   db.prepare('DELETE FROM modification_projects WHERE user_id = ?').run(userId);
@@ -50,7 +46,6 @@ router.delete('/', auth, (req, res) => {
   res.json({ message: 'Garage reset' });
 });
 
-// DELETE /api/cars/:id — delete a car
 router.delete('/:id', auth, (req, res) => {
   const car = db.prepare('SELECT * FROM cars WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!car) {

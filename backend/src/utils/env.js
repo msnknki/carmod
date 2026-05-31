@@ -1,4 +1,3 @@
-/** Read env vars and strip accidental surrounding quotes from Render/dashboard paste. */
 function readEnv(name) {
   const raw = process.env[name];
   if (raw == null || raw === '') {

@@ -1,4 +1,4 @@
-﻿import React, {useState, useRef, useEffect} from 'react';
+﻿import React, {useState, useRef, useEffect, useMemo} from 'react';
 import {
   Text,
   View,
@@ -17,16 +17,18 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRoute, RouteProp} from '@react-navigation/native';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
-import {colors} from '../theme';
-import styles from './styles/CustomizationScreen.styles';
+import {useTheme} from '../context/ThemeContext';
+import {createCustomizationScreenStyles} from './styles/CustomizationScreen.styles';
 import {useCar} from '../context/CarContext';
 import {useMarket} from '../context/MarketContext';
 import {getMarket} from '../data/markets';
 import {api, IMAGE_REQUEST_TIMEOUT_MS} from '../services/api';
 import {imageUriToBase64DataUrl} from '../utils/imageUriToBase64';
+import {saveImageToGallery} from '../utils/saveImageToGallery';
 import AppIcon from '../components/ui/AppIcon';
 import PressableScale from '../components/ui/PressableScale';
 import CarSelector from '../components/CarSelector';
+import {useAIAssistant} from '../context/AIAssistantContext';
 import MarketSelector from '../components/MarketSelector';
 import type {RootTabParamList} from '../types';
 
@@ -126,11 +128,13 @@ const formatPartPrice = (price: number, currency: string) => {
 
 const CustomizationScreen = () => {
   const route = useRoute<RouteProp<RootTabParamList, 'Customization'>>();
+  const {colors} = useTheme();
+  const styles = useMemo(() => createCustomizationScreenStyles(colors), [colors]);
   const {selectedCar} = useCar();
   const {countryCode} = useMarket();
+  const {registerCustomizationOpen} = useAIAssistant();
   const [activeTab, setActiveTab] = useState<Tab>('parts');
 
-  // Parts state
   const [query, setQuery] = useState('');
   const [parts, setParts] = useState<PartResult[]>([]);
   const [selectedParts, setSelectedParts] = useState<Set<string>>(new Set());
@@ -143,15 +147,14 @@ const CustomizationScreen = () => {
   const [partsMarketLabel, setPartsMarketLabel] = useState('');
   const lastPartsQueryRef = useRef('');
 
-  // Shops state
   const [shops, setShops] = useState<ShopResult[]>([]);
   const [shopsLoading, setShopsLoading] = useState(false);
   const [shopsError, setShopsError] = useState('');
 
-  // Image gen state
   const [imageDescription, setImageDescription] = useState('');
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
+  const [savingImage, setSavingImage] = useState(false);
   const [imageError, setImageError] = useState('');
   const [imageStatus, setImageStatus] = useState('');
   const [previewImageUri, setPreviewImageUri] = useState<string | undefined>();
@@ -159,15 +162,8 @@ const CustomizationScreen = () => {
   const [refinementText, setRefinementText] = useState('');
   const [refinementHistory, setRefinementHistory] = useState<string[]>([]);
 
-  // Build modal state
   const [buildModalOpen, setBuildModalOpen] = useState(false);
 
-  // Cost estimate state
-  const [estimateLoading, setEstimateLoading] = useState(false);
-  const [estimate, setEstimate] = useState<any>(null);
-  const [estimateError, setEstimateError] = useState('');
-
-  // AI chat state
   const [chatOpen, setChatOpen] = useState(false);
   const [detailPart, setDetailPart] = useState<AIPart | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -175,6 +171,11 @@ const CustomizationScreen = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatConversationId, setChatConversationId] = useState<number | null>(null);
   const chatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    registerCustomizationOpen(() => setChatOpen(true));
+    return () => registerCustomizationOpen(null);
+  }, [registerCustomizationOpen]);
 
   const searchParts = async (searchQuery?: string) => {
     const q = (searchQuery ?? query).trim();
@@ -256,32 +257,6 @@ const CustomizationScreen = () => {
       searchParts(lastPartsQueryRef.current);
     }
   }, [countryCode]);
-
-  const getEstimate = async () => {
-    const chosen = buildParts;
-    if (chosen.length === 0) {
-      return;
-    }
-    setEstimateLoading(true);
-    setEstimateError('');
-    setEstimate(null);
-    try {
-      const body: Record<string, any> = {
-        modifications: chosen.map(p => p.title),
-      };
-      if (selectedCar) {
-        body.carMake = selectedCar.make;
-        body.carModel = selectedCar.model;
-        body.carYear = String(selectedCar.year);
-      }
-      const data = await api.post('/estimate', body);
-      setEstimate(data);
-    } catch (err: any) {
-      setEstimateError(err.message || 'Estimate failed');
-    } finally {
-      setEstimateLoading(false);
-    }
-  };
 
   const pickPreviewImage = () => {
     Alert.alert('Car Photo', 'Choose a photo for this preview', [
@@ -418,6 +393,27 @@ const CustomizationScreen = () => {
       setImageError(err.message || 'Refinement failed');
     } finally {
       setImageLoading(false);
+    }
+  };
+
+  const downloadPreview = async () => {
+    if (!generatedImageUrl || savingImage) {
+      return;
+    }
+
+    setSavingImage(true);
+    try {
+      await saveImageToGallery(generatedImageUrl);
+      Alert.alert(
+        'Saved',
+        Platform.OS === 'android'
+          ? 'Photo saved to your gallery in the CarModApp folder.'
+          : 'Choose "Save Image" from the share sheet to save to Photos.',
+      );
+    } catch (err: any) {
+      Alert.alert('Could not save', err.message || 'Try again.');
+    } finally {
+      setSavingImage(false);
     }
   };
 
@@ -670,7 +666,6 @@ const CustomizationScreen = () => {
 
       <CarSelector style={styles.carBannerSpacing} />
 
-      {/* Tab bar */}
       <View style={styles.tabBar}>
         <PressableScale
           style={[styles.tab, activeTab === 'parts' && styles.tabActive]}
@@ -712,7 +707,6 @@ const CustomizationScreen = () => {
         </PressableScale>
       </View>
 
-      {/* Parts tab */}
       {activeTab === 'parts' && (
         <View style={styles.content}>
           <MarketSelector />
@@ -731,7 +725,7 @@ const CustomizationScreen = () => {
               onPress={() => searchParts()}
               disabled={partsLoading}>
               {partsLoading ? (
-                <ActivityIndicator color="#0B0B0B" size="small" />
+                <ActivityIndicator color={colors.onPrimary} size="small" />
               ) : (
                 <AppIcon name="magnify" size={24} color="#0B0B0B" />
               )}
@@ -814,8 +808,9 @@ const CustomizationScreen = () => {
               </View>
             </ScrollView>
           ) : (
-            <>
+            <View style={styles.partsBody}>
               <FlatList
+                style={styles.partsList}
                 data={parts}
                 renderItem={renderPartItem}
                 keyExtractor={item => item.id}
@@ -823,8 +818,7 @@ const CustomizationScreen = () => {
                 showsVerticalScrollIndicator={false}
               />
               {selectedParts.size > 0 && (
-                <View>
-                  {/* Selected parts tray */}
+                <View style={styles.buildFooter}>
                   <View style={styles.cartTray}>
                     <View style={styles.cartTrayHeader}>
                       <Text style={styles.cartTrayTitle}>
@@ -877,60 +871,13 @@ const CustomizationScreen = () => {
                       Total: ${totalCost.toFixed(2)}
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.estimateBtn}
-                    onPress={getEstimate}
-                    disabled={estimateLoading}>
-                    <Text style={styles.estimateBtnText}>
-                      {estimateLoading ? 'Estimating...' : 'Get Full Cost Estimate'}
-                    </Text>
-                  </TouchableOpacity>
-                  {estimateError !== '' && (
-                    <Text style={styles.errorText}>{estimateError}</Text>
-                  )}
-                  {estimate && (
-                    <View style={styles.estimateCard}>
-                      <Text style={styles.estimateTitle}>Cost Breakdown</Text>
-                      {estimate.items?.map((item: any, i: number) => (
-                        <View key={i} style={styles.estimateRow}>
-                          <Text style={styles.estimateItemName}>{item.name}</Text>
-                          <View style={styles.estimateCostLine}>
-                            <Text style={styles.estimateCostLabel}>Parts</Text>
-                            <Text style={styles.estimateItemCost}>
-                              ${item.partsCostLow} – ${item.partsCostHigh}
-                            </Text>
-                          </View>
-                          <View style={styles.estimateCostLine}>
-                            <Text style={styles.estimateCostLabel}>Labor</Text>
-                            <Text style={styles.estimateItemCost}>
-                              ${item.laborCostLow} – ${item.laborCostHigh}
-                              {item.laborHours ? ` · ${item.laborHours}h` : ''}
-                            </Text>
-                          </View>
-                          {item.notes ? (
-                            <Text style={styles.estimateNote}>{item.notes}</Text>
-                          ) : null}
-                        </View>
-                      ))}
-                      <View style={styles.estimateTotalRow}>
-                        <Text style={styles.estimateTotalLabel}>Grand total</Text>
-                        <Text style={styles.estimateTotalValue}>
-                          ${estimate.grandTotalLow} – ${estimate.grandTotalHigh}
-                        </Text>
-                      </View>
-                      {estimate.disclaimer ? (
-                        <Text style={styles.estimateDisclaimer}>{estimate.disclaimer}</Text>
-                      ) : null}
-                    </View>
-                  )}
                 </View>
               )}
-            </>
+            </View>
           )}
         </View>
       )}
 
-      {/* Shops tab */}
       {activeTab === 'shops' && (
         <View style={styles.shopsTab}>
           <View style={styles.shopsTabHeader}>
@@ -975,12 +922,14 @@ const CustomizationScreen = () => {
           )}
         </View>
       )}
-      {/* Preview tab */}
       {activeTab === 'preview' && (
-        <ScrollView style={styles.content} contentContainerStyle={styles.previewContent}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.previewContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
           <Text style={styles.previewHeading}>AI Mod Preview</Text>
 
-          {/* Selected parts summary — taps to open modal */}
           {selectedParts.size > 0 ? (
             <TouchableOpacity style={styles.previewCart} onPress={() => setBuildModalOpen(true)} activeOpacity={0.75}>
               <View style={styles.previewCartRow}>
@@ -1036,7 +985,7 @@ const CustomizationScreen = () => {
             onPress={generatePreview}
             disabled={imageLoading}>
             {imageLoading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.onAiAssistant} />
             ) : (
               <Text style={styles.generateBtnText}>Generate Preview</Text>
             )}
@@ -1054,7 +1003,20 @@ const CustomizationScreen = () => {
 
           {generatedImageUrl && (
             <View style={styles.imageContainer}>
-              <Text style={styles.imageLabel}>Generated Preview</Text>
+              <View style={styles.imageHeaderRow}>
+                <Text style={styles.imageLabel}>Generated Preview</Text>
+                <TouchableOpacity
+                  style={styles.downloadBtn}
+                  onPress={downloadPreview}
+                  disabled={savingImage}
+                  accessibilityLabel="Download preview">
+                  {savingImage ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <AppIcon name="download" size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              </View>
               <Image
                 source={{uri: generatedImageUrl}}
                 style={styles.generatedImage}
@@ -1090,7 +1052,7 @@ const CustomizationScreen = () => {
                 onPress={refinePreview}
                 disabled={!refinementText.trim() || imageLoading}>
                 {imageLoading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.onAiAssistant} />
                 ) : (
                   <Text style={styles.generateBtnText}>Apply Fix</Text>
                 )}
@@ -1105,7 +1067,6 @@ const CustomizationScreen = () => {
           )}
         </ScrollView>
       )}
-      {/* Build Parts Modal */}
       <Modal visible={buildModalOpen} animationType="slide" transparent onRequestClose={() => setBuildModalOpen(false)}>
         <View style={styles.detailOverlay}>
           <View style={styles.buildPanel}>
@@ -1152,7 +1113,6 @@ const CustomizationScreen = () => {
         </View>
       </Modal>
 
-      {/* Part Detail Modal */}
       {detailPart && (
         <Modal visible animationType="slide" transparent onRequestClose={() => setDetailPart(null)}>
           <View style={styles.detailOverlay}>
@@ -1190,14 +1150,6 @@ const CustomizationScreen = () => {
         </Modal>
       )}
 
-      {/* Floating AI button */}
-      <PressableScale
-        style={[styles.aiFab, {alignSelf: 'auto'}]}
-        onPress={() => setChatOpen(true)}>
-        <AppIcon name="robot-outline" size={28} color="#0B0B0B" />
-      </PressableScale>
-
-      {/* AI Chat Modal */}
       <Modal
         visible={chatOpen}
         animationType="slide"
@@ -1208,7 +1160,6 @@ const CustomizationScreen = () => {
             style={styles.chatPanel}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
 
-            {/* Header */}
             <View style={styles.chatHeader}>
               <Text style={styles.chatHeaderTitle}>AI Customization Assistant</Text>
               <TouchableOpacity style={styles.chatCloseBtn} onPress={() => setChatOpen(false)}>
@@ -1216,7 +1167,6 @@ const CustomizationScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Messages */}
             <FlatList
               ref={chatListRef}
               data={chatMessages}
@@ -1284,7 +1234,6 @@ const CustomizationScreen = () => {
               </View>
             )}
 
-            {/* Input bar */}
             <View style={styles.chatInputBar}>
               <TextInput
                 style={styles.chatInput}

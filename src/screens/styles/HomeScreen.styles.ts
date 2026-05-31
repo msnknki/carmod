@@ -1,7 +1,10 @@
 import {StyleSheet} from 'react-native';
-import {colors, fontSize, radius, shadows, spacing} from '../../theme';
+import type {ColorPalette} from '../../theme/colors';
+import {createShadows, fontSize, radius, spacing} from '../../theme';
 
-export default StyleSheet.create({
+export const createHomeScreenStyles = (colors: ColorPalette) => {
+  const shadows = createShadows(colors);
+  return StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
   flex: {flex: 1},
   scroll: {paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl},
@@ -321,4 +324,5 @@ export default StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
   },
-});
+  });
+};

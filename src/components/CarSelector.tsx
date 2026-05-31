@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {
   Modal,
   View,
@@ -13,7 +13,8 @@ import {useCar} from '../context/CarContext';
 import type {Car} from '../types';
 import AppIcon from './ui/AppIcon';
 import PressableScale from './ui/PressableScale';
-import {colors, fontSize, radius, spacing} from '../theme';
+import {useTheme} from '../context/ThemeContext';
+import {fontSize, radius, spacing} from '../theme';
 
 type Props = {
   style?: object;
@@ -24,7 +25,114 @@ const carLabel = (car: Car) =>
 
 const CarSelector = ({style}: Props) => {
   const {cars, selectedCar, selectCar} = useCar();
+  const {colors} = useTheme();
   const [open, setOpen] = useState(false);
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        banner: {
+          alignSelf: 'stretch',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          backgroundColor: colors.card,
+          padding: spacing.md,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        bannerMuted: {
+          backgroundColor: colors.surface,
+        },
+        bannerMutedText: {
+          flex: 1,
+          color: colors.textSecondary,
+          fontSize: fontSize.sm,
+        },
+        thumb: {
+          width: 44,
+          height: 44,
+          borderRadius: radius.sm,
+        },
+        thumbPlaceholder: {
+          backgroundColor: colors.surface,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        bannerTextWrap: {flex: 1},
+        bannerLabel: {
+          fontSize: fontSize.xs,
+          color: colors.textMuted,
+          fontWeight: '600',
+          textTransform: 'uppercase',
+          letterSpacing: 0.8,
+          marginBottom: 2,
+        },
+        bannerText: {
+          color: colors.text,
+          fontSize: fontSize.md,
+          fontWeight: '600',
+        },
+        backdrop: {
+          flex: 1,
+          backgroundColor: colors.overlay,
+          justifyContent: 'flex-end',
+        },
+        sheet: {
+          backgroundColor: colors.cardElevated,
+          borderTopLeftRadius: radius.xl,
+          borderTopRightRadius: radius.xl,
+          padding: spacing.lg,
+          maxHeight: '70%',
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        sheetTitle: {
+          fontSize: fontSize.lg,
+          fontWeight: '700',
+          color: colors.text,
+          marginBottom: spacing.md,
+        },
+        option: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.md,
+          padding: spacing.md,
+          borderRadius: radius.md,
+          marginBottom: spacing.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.card,
+        },
+        optionActive: {
+          borderColor: colors.primary,
+          backgroundColor: colors.cardElevated,
+        },
+        optionThumb: {
+          width: 56,
+          height: 56,
+          borderRadius: radius.sm,
+        },
+        optionText: {
+          flex: 1,
+          fontSize: fontSize.md,
+          fontWeight: '600',
+          color: colors.text,
+        },
+        closeBtn: {
+          marginTop: spacing.sm,
+          padding: spacing.md,
+          alignItems: 'center',
+        },
+        closeBtnText: {
+          color: colors.primary,
+          fontSize: fontSize.md,
+          fontWeight: '600',
+        },
+      }),
+    [colors],
+  );
 
   if (cars.length === 0) {
     return (
@@ -112,107 +220,5 @@ const CarSelector = ({style}: Props) => {
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  banner: {
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.card,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  bannerMuted: {
-    backgroundColor: colors.surface,
-  },
-  bannerMutedText: {
-    flex: 1,
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-  },
-  thumb: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.sm,
-  },
-  thumbPlaceholder: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bannerTextWrap: {flex: 1},
-  bannerLabel: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 2,
-  },
-  bannerText: {
-    color: colors.text,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: colors.cardElevated,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    padding: spacing.lg,
-    maxHeight: '70%',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sheetTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  optionActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.cardElevated,
-  },
-  optionThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.sm,
-  },
-  optionText: {
-    flex: 1,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  closeBtn: {
-    marginTop: spacing.sm,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  closeBtnText: {
-    color: colors.primary,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-  },
-});
 
 export default CarSelector;

@@ -106,7 +106,6 @@ async function enrichPlaceDetails(shop) {
   }
 }
 
-// Search for nearby auto parts shops using Google Places
 async function searchNearbyShops(latitude, longitude, radius = 12000, countryCode = 'US') {
   if (!GOOGLE_PLACES_KEY) {
     return getMockShops(latitude, longitude, countryCode);

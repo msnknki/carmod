@@ -13,7 +13,6 @@ function parsePriceAndCurrency(priceRaw) {
   return {price, currency: 'USD'};
 }
 
-/** @type {string | null} */
 let lastSearchDiagnostic = null;
 
 function setDiagnostic(message) {
@@ -24,7 +23,6 @@ function getSearchDiagnostic() {
   return lastSearchDiagnostic;
 }
 
-// Search Google Shopping via Serper.dev — returns real product images
 async function searchSerper(query, countryCode, limit = 10) {
   const apiKey = readEnv('SERPER_API_KEY');
   if (!apiKey) {
@@ -93,7 +91,6 @@ async function searchSerper(query, countryCode, limit = 10) {
   }
 }
 
-// Search eBay Finding API (App ID only, no OAuth)
 async function searchEbay(query, limit = 10) {
   const apiKey = readEnv('EBAY_API_KEY');
   if (!apiKey) return null;
@@ -133,14 +130,13 @@ async function searchEbay(query, limit = 10) {
         source: 'ebay',
         sellerLocation: item.location?.[0] || '',
       };
-    }).filter(item => item.imageUrl); // only keep items that have an image
+    }).filter(item => item.imageUrl);
   } catch (err) {
     console.error('eBay API error:', err.message);
     return null;
   }
 }
 
-// Search AliExpress Affiliate API
 async function searchAliExpress(query, limit = 10) {
   const apiKey = readEnv('ALIEXPRESS_API_KEY');
   if (!apiKey) return null;
@@ -178,7 +174,6 @@ async function searchAliExpress(query, limit = 10) {
   }
 }
 
-// Mock results for development (used when no API keys are configured)
 function getMockResults(query, source = 'serper') {
   const keywords = query.toLowerCase();
   const mockData = [
@@ -212,29 +207,24 @@ function getMockResults(query, source = 'serper') {
   }));
 }
 
-// Main search: Serper → eBay → AliExpress → mock
 async function searchParts(query, countryCode, limit = 10) {
   lastSearchDiagnostic = null;
 
-  // 1. Try Serper.dev (Google Shopping) — real images, works globally
   const serperResults = await searchSerper(query, countryCode, limit);
   if (serperResults && serperResults.length > 0) {
     return { results: serperResults, provider: 'serper', mockFallback: false, diagnostic: null };
   }
 
-  // 2. Try eBay Finding API
   const ebayResults = await searchEbay(query, limit);
   if (ebayResults && ebayResults.length > 0) {
     return { results: ebayResults, provider: 'ebay', mockFallback: false, diagnostic: null };
   }
 
-  // 3. Try AliExpress Affiliate API
   const aliResults = await searchAliExpress(query, limit);
   if (aliResults && aliResults.length > 0) {
     return { results: aliResults, provider: 'aliexpress', mockFallback: false, diagnostic: null };
   }
 
-  // 4. Fall back to mock data (dev/demo only)
   const source = getPartsSource(countryCode);
   const diagnostic =
     lastSearchDiagnostic ||

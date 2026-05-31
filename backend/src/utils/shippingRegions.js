@@ -1,4 +1,3 @@
-// Countries where eBay has reliable shipping infrastructure
 const EBAY_SUPPORTED_COUNTRIES = new Set([
   'US', 'GB', 'DE', 'FR', 'IT', 'ES', 'AU', 'CA', 'AT', 'BE', 'CH', 'NL',
   'IE', 'PL', 'SE', 'DK', 'FI', 'NO', 'PT', 'CZ', 'HU', 'RO', 'BG', 'HR',

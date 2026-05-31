@@ -6,9 +6,8 @@ const MARKETS = {
   DE: {label: 'Germany', latitude: 52.52, longitude: 13.405},
 };
 
-/** Serper Google Shopping locale per app market */
 const SHOPPING_LOCALE = {
-  // Google Shopping is sparse for LB — fall back to AE catalog while keeping Lebanon in the query
+
   LB: {
     gl: 'lb',
     hl: 'en',

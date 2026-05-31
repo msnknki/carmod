@@ -1,4 +1,3 @@
-/** Read a local image URI into a data URL (works with Android content:// URIs). */
 export async function imageUriToBase64DataUrl(uri: string): Promise<string | null> {
   if (!uri) {
     return null;

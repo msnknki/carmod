@@ -1,9 +1,10 @@
 import Config from 'react-native-config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** Hosted backend (used when .env is missing or not baked into the native build). */
 export const PRODUCTION_API_BASE = 'https://carmod.onrender.com/api';
 
-// Default: always Render. Local backend only when USE_LOCAL_API=true in .env (then rebuild native app).
+const AUTH_TOKEN_KEY = '@carmodapp/authToken';
+
 function normalizeApiBase(raw: string | undefined): string {
   const cleaned = (raw || '')
     .trim()
@@ -26,7 +27,6 @@ if (__DEV__) {
 export const getApiBaseUrl = () => API_BASE;
 
 const REQUEST_TIMEOUT_MS = 20000;
-/** Image generation (fal.ai + Render cold start) can take 60–120s. */
 export const IMAGE_REQUEST_TIMEOUT_MS = 120_000;
 
 const GUEST_EMAIL = 'guest@carmodapp.local';
@@ -38,9 +38,91 @@ let refreshing = false;
 
 export const setAuthToken = (token: string) => {
   authToken = token;
+  AsyncStorage.setItem(AUTH_TOKEN_KEY, token).catch(() => {});
+};
+
+export const clearAuthToken = () => {
+  authToken = null;
+  AsyncStorage.removeItem(AUTH_TOKEN_KEY).catch(() => {});
 };
 
 export const getAuthToken = () => authToken;
+
+async function loadStoredToken(): Promise<void> {
+  try {
+    const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+    if (stored) {
+      authToken = stored;
+    }
+  } catch {
+  }
+}
+
+async function loginGuestRaw(): Promise<string | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: GUEST_EMAIL, password: GUEST_PASSWORD}),
+      signal: controller.signal,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.token ?? null;
+    }
+  } catch {
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  return null;
+}
+
+async function registerGuestRaw(): Promise<string | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        email: GUEST_EMAIL,
+        password: GUEST_PASSWORD,
+        displayName: GUEST_NAME,
+      }),
+      signal: controller.signal,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.token ?? null;
+    }
+  } catch {
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  return null;
+}
+
+export async function ensureAuthenticated(): Promise<boolean> {
+  if (authToken) {
+    return true;
+  }
+  await loadStoredToken();
+  if (authToken) {
+    return true;
+  }
+
+  let token = await registerGuestRaw();
+  if (!token) {
+    token = await loginGuestRaw();
+  }
+  if (token) {
+    setAuthToken(token);
+    return true;
+  }
+  return false;
+}
 
 const getHeaders = () => {
   const headers: Record<string, string> = {
@@ -53,25 +135,22 @@ const getHeaders = () => {
 };
 
 async function refreshGuestToken(): Promise<void> {
-  if (refreshing) return;
+  if (refreshing) {
+    return;
+  }
   refreshing = true;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({email: GUEST_EMAIL, password: GUEST_PASSWORD}),
-      signal: controller.signal,
-    });
-    if (res.ok) {
-      const data = await res.json();
-      authToken = data.token;
+    let token = await loginGuestRaw();
+    if (!token) {
+      token = await registerGuestRaw();
     }
-  } catch {
-    // backend unreachable — leave token as-is
+    if (!token) {
+      token = await loginGuestRaw();
+    }
+    if (token) {
+      setAuthToken(token);
+    }
   } finally {
-    clearTimeout(timeoutId);
     refreshing = false;
   }
 }
@@ -82,6 +161,10 @@ async function request(
   retry = true,
   timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<any> {
+  if (!authToken) {
+    await ensureAuthenticated();
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -106,6 +189,11 @@ async function request(
 
   if (res.status === 401 && retry) {
     await refreshGuestToken();
+    if (!authToken) {
+      throw new Error(
+        'Could not sign in — check your internet connection and try again (Render may be waking up)',
+      );
+    }
     const retryOptions = {
       ...options,
       headers: getHeaders(),

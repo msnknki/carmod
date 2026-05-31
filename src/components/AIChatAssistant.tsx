@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useMemo} from 'react';
 import {
   Text,
   TextInput,
@@ -15,8 +15,8 @@ import {
   Alert,
 } from 'react-native';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
-import {colors} from '../theme';
-import styles from '../screens/styles/AIScreen.styles';
+import {useTheme} from '../context/ThemeContext';
+import {createAIScreenStyles} from '../screens/styles/AIScreen.styles';
 import {useCar} from '../context/CarContext';
 import {useMarket} from '../context/MarketContext';
 import {api} from '../services/api';
@@ -59,6 +59,8 @@ type Props = {
 const AIChatAssistant = ({onClose, embedded = false}: Props) => {
   const {selectedCar} = useCar();
   const {countryCode} = useMarket();
+  const {colors} = useTheme();
+  const styles = useMemo(() => createAIScreenStyles(colors), [colors]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -316,7 +318,7 @@ const AIChatAssistant = ({onClose, embedded = false}: Props) => {
             style={[styles.sendButton, (!input.trim() || loading) && styles.sendDisabled]}
             onPress={() => sendMessage()}
             disabled={!input.trim() || loading}>
-            <AppIcon name="send" size={22} color="#0B0B0B" />
+            <AppIcon name="send" size={22} color={colors.onPrimary} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

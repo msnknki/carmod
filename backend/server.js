@@ -4,7 +4,6 @@ const express = require('express');
 const cors = require('cors');
 const errorHandler = require('./src/middleware/errorHandler');
 
-// Initialize database (runs schema on first load)
 require('./src/config/database');
 
 const {getAuthMode} = require('./src/utils/gemini');
@@ -14,11 +13,9 @@ console.log('[env] integrations:', getEnvStatus());
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 
-// Routes
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/cars', require('./src/routes/cars'));
 app.use('/api/conversations', require('./src/routes/conversations'));
@@ -27,10 +24,8 @@ app.use('/api/diy', require('./src/routes/diy'));
 app.use('/api/parts', require('./src/routes/parts'));
 app.use('/api/shops', require('./src/routes/shops'));
 app.use('/api/image', require('./src/routes/image'));
-app.use('/api/estimate', require('./src/routes/estimate'));
 app.use('/api/mechanics', require('./src/routes/mechanics'));
 
-// Health check (+ optional ?probe=serper to verify Serper key works)
 app.get('/api/health', async (req, res) => {
   const payload = {
     status: 'ok',
@@ -44,7 +39,6 @@ app.get('/api/health', async (req, res) => {
   res.json(payload);
 });
 
-// Error handler (must be last)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;

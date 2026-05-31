@@ -42,10 +42,10 @@ import {
   Phone,
   Globe,
   Clock,
+  Download,
 } from 'lucide-react-native';
-import {colors} from '../../theme';
+import {useTheme} from '../../context/ThemeContext';
 
-/** Material Community icon names used across the app → Lucide components */
 const ICON_MAP: Record<string, LucideIcon> = {
   'home-variant': Home,
   wrench: Wrench,
@@ -93,6 +93,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   phone: Phone,
   'web': Globe,
   'clock-outline': Clock,
+  download: Download,
 };
 
 export type AppIconName = keyof typeof ICON_MAP;
@@ -107,11 +108,12 @@ type Props = {
 const AppIcon = ({
   name,
   size = 22,
-  color = colors.text,
+  color,
   strokeWidth = 2,
 }: Props) => {
+  const {colors} = useTheme();
   const Icon = ICON_MAP[name] ?? Sparkles;
-  return <Icon size={size} color={color} strokeWidth={strokeWidth} />;
+  return <Icon size={size} color={color ?? colors.text} strokeWidth={strokeWidth} />;
 };
 
 export default AppIcon;

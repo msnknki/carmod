@@ -43,7 +43,6 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "clarifyingQuestions": ["Question 1?", "Question 2?"]
 }`;
 
-// POST /api/diy — diagnose a car problem
 router.post('/', auth, async (req, res, next) => {
   try {
     const { symptom, carId, additionalContext } = req.body;
@@ -52,7 +51,6 @@ router.post('/', auth, async (req, res, next) => {
       return res.status(400).json({ error: 'Symptom description is required' });
     }
 
-    // Get car context
     let carContext = '';
     if (carId) {
       const car = db.prepare('SELECT * FROM cars WHERE id = ? AND user_id = ?').get(carId, req.userId);
@@ -66,7 +64,6 @@ router.post('/', auth, async (req, res, next) => {
 
     const text = await generateText(prompt);
 
-    // Parse JSON response
     let diagnosis;
     try {
       const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -87,7 +84,6 @@ router.post('/', auth, async (req, res, next) => {
       };
     }
 
-    // Save as a DIY conversation
     const conv = db.prepare(
       'INSERT INTO conversations (user_id, car_id, type, title) VALUES (?, ?, ?, ?)'
     ).run(req.userId, carId || null, 'diy', symptom.substring(0, 50));

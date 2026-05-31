@@ -1,7 +1,10 @@
 import {StyleSheet} from 'react-native';
-import {colors, fontSize, radius, shadows, spacing} from '../../theme';
+import type {ColorPalette} from '../../theme/colors';
+import {createShadows, fontSize, radius, spacing} from '../../theme';
 
-export default StyleSheet.create({
+export const createAIScreenStyles = (colors: ColorPalette) => {
+  const shadows = createShadows(colors);
+  return StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
   flex: {flex: 1},
   header: {
@@ -90,7 +93,7 @@ export default StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
   },
-  locationChipTextSelected: {color: '#0B0B0B'},
+  locationChipTextSelected: {color: colors.onPrimary},
   suggestionsWrap: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -169,7 +172,7 @@ export default StyleSheet.create({
   },
   userRoleLabel: {color: 'rgba(11, 11, 11, 0.55)'},
   messageText: {color: colors.text, fontSize: fontSize.md, lineHeight: 22},
-  userMessageText: {color: '#0B0B0B', fontWeight: '500'},
+  userMessageText: {color: colors.onPrimary, fontWeight: '500'},
   partsSection: {alignSelf: 'stretch', marginBottom: spacing.sm, marginTop: 4},
   partsSectionTitle: {
     fontSize: fontSize.sm,
@@ -287,7 +290,7 @@ export default StyleSheet.create({
     ...shadows.glow,
   },
   detailBuyBtnText: {
-    color: '#0B0B0B',
+    color: colors.onPrimary,
     fontSize: fontSize.md,
     fontWeight: '700',
   },
@@ -364,4 +367,5 @@ export default StyleSheet.create({
     borderRadius: radius.sm,
     marginBottom: spacing.xs,
   },
-});
+  });
+};

@@ -6,7 +6,6 @@ const { REGIONAL_SHOPPING_HINTS, getShoppingLocale } = require('../utils/marketL
 
 const router = express.Router();
 
-// POST /api/parts/search — search for car parts
 router.post('/search', auth, async (req, res, next) => {
   try {
     const { query, carMake, carModel, carYear, countryCode, source } = req.body;
@@ -46,13 +45,12 @@ Examples:
         .trim()
         .replace(/^["']|["']$/g, '');
     } catch {
-      // Gemini failed — use car-prefixed query as fallback
+
     }
 
     const search = await searchParts(optimizedQuery, countryCode || 'US');
     const parts = search.results;
 
-    // Filter using optimized query words (which include car make/model) so generic parts are excluded
     const filterWords = optimizedQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     const relevant = parts.filter(p => {
       const title = (p.title || '').toLowerCase();

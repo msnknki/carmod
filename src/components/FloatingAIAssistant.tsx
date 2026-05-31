@@ -1,19 +1,22 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {Modal, View, StyleSheet, Platform} from 'react-native';
 import PressableScale from './ui/PressableScale';
 import {useNavigationState} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {colors, shadows} from '../theme';
+import {useTheme} from '../context/ThemeContext';
 import {useAIAssistant} from '../context/AIAssistantContext';
 import AppIcon from './ui/AppIcon';
 import AIChatAssistant from './AIChatAssistant';
 
+export const AI_FAB_SIZE = 56;
+export const AI_FAB_RIGHT = 20;
 const TAB_BAR_OFFSET = Platform.OS === 'ios' ? 88 : 72;
 
 const FloatingAIAssistant = () => {
   const [open, setOpen] = useState(false);
   const insets = useSafeAreaInsets();
-  const {registerOpen} = useAIAssistant();
+  const {colors, shadows} = useTheme();
+  const {registerOpen, openCustomizationAssistant} = useAIAssistant();
 
   useEffect(() => {
     registerOpen(() => setOpen(true));
@@ -22,11 +25,39 @@ const FloatingAIAssistant = () => {
   const activeTab = useNavigationState(
     state => state?.routes[state.index]?.name,
   );
-  const hiddenOnCustomization = activeTab === 'Customization';
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        fab: {
+          position: 'absolute',
+          right: AI_FAB_RIGHT,
+          backgroundColor: colors.aiAssistant,
+          borderRadius: AI_FAB_SIZE / 2,
+          width: AI_FAB_SIZE,
+          height: AI_FAB_SIZE,
+          zIndex: 100,
+          ...shadows.aiGlow,
+        },
+        modalRoot: {
+          flex: 1,
+          backgroundColor: colors.background,
+          paddingTop: Platform.OS === 'ios' ? 8 : 0,
+        },
+      }),
+    [colors, shadows],
+  );
+
+  const handlePress = () => {
+    if (activeTab === 'Customization') {
+      openCustomizationAssistant();
+      return;
+    }
+    setOpen(true);
+  };
 
   return (
     <>
-      {!hiddenOnCustomization && (
       <PressableScale
         style={[
           styles.fab,
@@ -35,11 +66,10 @@ const FloatingAIAssistant = () => {
             alignSelf: 'auto',
           },
         ]}
-        onPress={() => setOpen(true)}
+        onPress={handlePress}
         accessibilityLabel="Open AI assistant">
-        <AppIcon name="robot-outline" size={28} color="#0B0B0B" />
+        <AppIcon name="robot-outline" size={28} color={colors.onAiAssistant} />
       </PressableScale>
-      )}
 
       <Modal
         visible={open}
@@ -53,24 +83,5 @@ const FloatingAIAssistant = () => {
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    right: 20,
-    backgroundColor: colors.primary,
-    borderRadius: 28,
-    width: 56,
-    height: 56,
-    zIndex: 100,
-    elevation: 8,
-    ...shadows.glow,
-  },
-  modalRoot: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'ios' ? 8 : 0,
-  },
-});
 
 export default FloatingAIAssistant;

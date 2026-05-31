@@ -54,7 +54,7 @@ export const CarProvider = ({children}: {children: React.ReactNode}) => {
           setSelectedCar(last ?? loaded[0]);
         }
       } catch {
-        // backend unavailable — start with empty list
+
       }
     };
     loadCars();
@@ -89,7 +89,7 @@ export const CarProvider = ({children}: {children: React.ReactNode}) => {
     try {
       await api.del(`/cars/${id}`);
     } catch {
-      // proceed with local removal even if backend call fails
+
     }
     setCars(prev => {
       const next = prev.filter(c => c.id !== id);
@@ -110,7 +110,7 @@ export const CarProvider = ({children}: {children: React.ReactNode}) => {
     try {
       await api.del('/cars');
     } catch {
-      // clear local state even if backend unreachable
+
     }
     await AsyncStorage.removeItem(SELECTED_CAR_KEY);
     setCars([]);
@@ -126,7 +126,7 @@ export const CarProvider = ({children}: {children: React.ReactNode}) => {
     try {
       await api.patch(`/cars/${id}`, {imageUri});
     } catch {
-      // proceed locally even if backend call fails
+
     }
     setCars(prev => prev.map(c => (c.id === id ? {...c, imageUri} : c)));
     setSelectedCar(prev => (prev?.id === id ? {...prev, imageUri} : prev));

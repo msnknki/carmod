@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {
   Text,
   TextInput,
@@ -9,8 +9,10 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {colors, spacing} from '../theme';
-import styles from './styles/DIYScreen.styles';
+import {useTheme} from '../context/ThemeContext';
+import type {ColorPalette} from '../theme/colors';
+import {createDIYScreenStyles} from './styles/DIYScreen.styles';
+import {spacing} from '../theme';
 import {useCar} from '../context/CarContext';
 import {api} from '../services/api';
 import AppIcon from '../components/ui/AppIcon';
@@ -44,9 +46,13 @@ type DiagnosisResult = {
 const CardHeader = ({
   icon,
   title,
+  styles,
+  colors,
 }: {
   icon: string;
   title: string;
+  styles: ReturnType<typeof createDIYScreenStyles>;
+  colors: ColorPalette;
 }) => (
   <View style={styles.cardTitleRow}>
     <AppIcon name={icon} size={20} color={colors.primary} />
@@ -55,6 +61,8 @@ const CardHeader = ({
 );
 
 const DIYScreen = () => {
+  const {colors} = useTheme();
+  const styles = useMemo(() => createDIYScreenStyles(colors), [colors]);
   const {selectedCar} = useCar();
   const [symptom, setSymptom] = useState('');
   const [loading, setLoading] = useState(false);
@@ -212,7 +220,7 @@ const DIYScreen = () => {
               )}
 
               <View style={styles.card}>
-                <CardHeader icon="magnify-scan" title="Diagnosis" />
+                <CardHeader icon="magnify-scan" title="Diagnosis" styles={styles} colors={colors} />
                 <Text style={styles.cardContent}>{result.diagnosis}</Text>
                 {result.difficulty && result.difficulty !== 'unknown' && (
                   <View style={styles.metaRow}>
@@ -235,7 +243,7 @@ const DIYScreen = () => {
 
               {result.safetyWarnings.length > 0 && (
                 <View style={[styles.card, styles.warningCard]}>
-                  <CardHeader icon="shield-alert" title="Safety warnings" />
+                  <CardHeader icon="shield-alert" title="Safety warnings" styles={styles} colors={colors} />
                   {result.safetyWarnings.map((w, i) => (
                     <Text key={i} style={styles.warningItem}>
                       • {w}
@@ -246,7 +254,7 @@ const DIYScreen = () => {
 
               {result.tools.length > 0 && (
                 <View style={styles.card}>
-                  <CardHeader icon="toolbox-outline" title="Tools needed" />
+                  <CardHeader icon="toolbox-outline" title="Tools needed" styles={styles} colors={colors} />
                   <View style={styles.toolsGrid}>
                     {result.tools.map((t, i) => (
                       <View key={i} style={styles.toolChip}>
@@ -259,7 +267,7 @@ const DIYScreen = () => {
 
               {result.steps.length > 0 && (
                 <View style={styles.card}>
-                  <CardHeader icon="format-list-numbered" title="Step-by-step guide" />
+                  <CardHeader icon="format-list-numbered" title="Step-by-step guide" styles={styles} colors={colors} />
                   {result.steps.map((s, i) => (
                     <View key={i} style={styles.stepRow}>
                       <View style={styles.stepNumber}>
@@ -271,31 +279,9 @@ const DIYScreen = () => {
                 </View>
               )}
 
-              {(result.estimatedCost.parts || result.estimatedCost.labor) && (
-                <View style={styles.card}>
-                  <CardHeader icon="cash" title="Estimated cost" />
-                  {!!result.estimatedCost.parts && (
-                    <View style={styles.costBlock}>
-                      <Text style={styles.costLabel}>Parts</Text>
-                      <Text style={styles.costValue}>
-                        {result.estimatedCost.parts}
-                      </Text>
-                    </View>
-                  )}
-                  {!!result.estimatedCost.labor && (
-                    <View style={styles.costBlock}>
-                      <Text style={styles.costLabel}>Labor</Text>
-                      <Text style={styles.costValue}>
-                        {result.estimatedCost.labor}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
               {hasQuestions && (
                 <View style={styles.followUpCard}>
-                  <CardHeader icon="help-circle-outline" title="Help narrow it down" />
+                  <CardHeader icon="help-circle-outline" title="Help narrow it down" styles={styles} colors={colors} />
                   {result.clarifyingQuestions!.map((q, i) => (
                     <Text key={i} style={styles.followUpQuestion}>
                       • {q}

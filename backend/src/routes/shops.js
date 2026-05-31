@@ -5,7 +5,6 @@ const { getMarket } = require('../utils/marketLocations');
 
 const router = express.Router();
 
-// GET /api/shops/nearby — find local auto parts shops (Google Places)
 router.get('/nearby', auth, async (req, res, next) => {
   try {
     let { latitude, longitude, radius, countryCode } = req.query;

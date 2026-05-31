@@ -12,13 +12,12 @@ function parseServiceAccountJson() {
   }
   const filePath = process.env.GCP_SERVICE_ACCOUNT_PATH?.trim();
   if (filePath) {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
+
     return require(filePath);
   }
   return null;
 }
 
-/** @returns {'vertex' | 'api_key'} */
 function getAuthMode() {
   if (process.env.GEMINI_AUTH_MODE === 'api_key') {
     return 'api_key';
@@ -167,9 +166,6 @@ async function generateText(prompt, options = {}) {
   return withRetry(() => generateTextApiKey(prompt, options));
 }
 
-/**
- * Multi-turn chat + optional image (used by AI assistant).
- */
 async function generateChat({
   systemText,
   message,

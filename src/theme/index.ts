@@ -1,32 +1,11 @@
 import {Platform, TextStyle, ViewStyle} from 'react-native';
+import {darkColors} from './colors';
+import type {ColorPalette} from './colors';
 
-export const colors = {
-  background: '#0B0B0B',
-  backgroundSecondary: '#111111',
-  surface: '#1A1A1A',
-  surfaceLight: '#222222',
-  card: '#1A1A1A',
-  cardElevated: '#222222',
+export {darkColors, lightColors, getColors} from './colors';
+export type {ColorPalette} from './colors';
 
-  primary: '#FFD60A',
-  primaryDark: '#FFB800',
-  primaryMuted: 'rgba(255, 214, 10, 0.15)',
-
-  text: '#FFFFFF',
-  textSecondary: '#B3B3B3',
-  textMuted: '#7A7A7A',
-
-  border: 'rgba(255,255,255,0.08)',
-  borderStrong: 'rgba(255,255,255,0.14)',
-
-  accent: '#4ADE80',
-  danger: '#FF453A',
-  warning: '#FFB800',
-
-  overlay: 'rgba(0,0,0,0.65)',
-  glass: 'rgba(26,26,26,0.72)',
-  glow: 'rgba(255, 214, 10, 0.35)',
-};
+export const colors = darkColors;
 
 export const spacing = {
   xs: 4,
@@ -56,74 +35,37 @@ export const fontSize = {
   hero: 32,
 };
 
-export const typography = {
-  hero: {
-    fontSize: fontSize.hero,
-    fontWeight: '700' as const,
-    color: colors.text,
-    letterSpacing: -0.5,
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: '700' as const,
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  section: {
-    fontSize: fontSize.xl,
-    fontWeight: '600' as const,
-    color: colors.text,
-  },
-  body: {
-    fontSize: fontSize.lg,
-    fontWeight: '400' as const,
-    color: colors.textSecondary,
-    lineHeight: 22,
-  },
-  label: {
-    fontSize: fontSize.sm,
-    fontWeight: '500' as const,
-    color: colors.textMuted,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase' as const,
-  },
-  caption: {
-    fontSize: fontSize.xs,
-    fontWeight: '400' as const,
-    color: colors.textMuted,
-  },
+export type AppShadows = {
+  card: ViewStyle;
+  soft: ViewStyle;
+  glow: ViewStyle;
+  aiGlow: ViewStyle;
 };
 
-export const fontFamily = Platform.select({
-  ios: 'System',
-  android: 'sans-serif',
-  default: 'System',
-});
-
-export const shadows = {
+export const createShadows = (palette: ColorPalette): AppShadows => ({
   card: Platform.select<ViewStyle>({
     ios: {
       shadowColor: '#000',
       shadowOffset: {width: 0, height: 8},
-      shadowOpacity: 0.35,
+      shadowOpacity: palette.background === '#FFFFFF' ? 0.12 : 0.35,
       shadowRadius: 16,
     },
-    android: {elevation: 8},
+    android: {elevation: palette.background === '#FFFFFF' ? 4 : 8},
     default: {},
   }),
   soft: Platform.select<ViewStyle>({
     ios: {
       shadowColor: '#000',
       shadowOffset: {width: 0, height: 4},
-      shadowOpacity: 0.25,
+      shadowOpacity: palette.background === '#FFFFFF' ? 0.08 : 0.25,
       shadowRadius: 10,
     },
-    android: {elevation: 4},
+    android: {elevation: palette.background === '#FFFFFF' ? 2 : 4},
     default: {},
   }),
   glow: Platform.select<ViewStyle>({
     ios: {
-      shadowColor: colors.primary,
+      shadowColor: palette.primary,
       shadowOffset: {width: 0, height: 0},
       shadowOpacity: 0.45,
       shadowRadius: 12,
@@ -131,59 +73,123 @@ export const shadows = {
     android: {elevation: 6},
     default: {},
   }),
-};
+  aiGlow: Platform.select<ViewStyle>({
+    ios: {
+      shadowColor: palette.aiAssistant,
+      shadowOffset: {width: 0, height: 0},
+      shadowOpacity: 0.45,
+      shadowRadius: 12,
+    },
+    android: {elevation: 8},
+    default: {},
+  }),
+});
 
-export const sharedStyles = {
+export const shadows = createShadows(darkColors);
+
+export type AppTypography = ReturnType<typeof createTypography>;
+
+export const createTypography = (palette: ColorPalette) => ({
+  hero: {
+    fontSize: fontSize.hero,
+    fontWeight: '700' as const,
+    color: palette.text,
+    letterSpacing: -0.5,
+  },
+  title: {
+    fontSize: fontSize.title,
+    fontWeight: '700' as const,
+    color: palette.text,
+    letterSpacing: -0.3,
+  },
+  section: {
+    fontSize: fontSize.xl,
+    fontWeight: '600' as const,
+    color: palette.text,
+  },
+  body: {
+    fontSize: fontSize.lg,
+    fontWeight: '400' as const,
+    color: palette.textSecondary,
+    lineHeight: 22,
+  },
+  label: {
+    fontSize: fontSize.sm,
+    fontWeight: '500' as const,
+    color: palette.textMuted,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase' as const,
+  },
+  caption: {
+    fontSize: fontSize.xs,
+    fontWeight: '400' as const,
+    color: palette.textMuted,
+  },
+});
+
+export const typography = createTypography(darkColors);
+
+export const fontFamily = Platform.select({
+  ios: 'System',
+  android: 'sans-serif',
+  default: 'System',
+});
+
+export type AppSharedStyles = ReturnType<typeof createSharedStyles>;
+
+export const createSharedStyles = (palette: ColorPalette, themeShadows: AppShadows) => ({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: palette.background,
   } as ViewStyle,
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: palette.card,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.card,
+    borderColor: palette.border,
+    ...themeShadows.card,
   } as ViewStyle,
   cardElevated: {
-    backgroundColor: colors.cardElevated,
+    backgroundColor: palette.cardElevated,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
-    ...shadows.soft,
+    borderColor: palette.borderStrong,
+    ...themeShadows.soft,
   } as ViewStyle,
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: palette.surface,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: palette.border,
     paddingHorizontal: spacing.md,
     paddingVertical: 14,
-    color: colors.text,
+    color: palette.text,
     fontSize: fontSize.lg,
   } as TextStyle,
   primaryButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: palette.primary,
     borderRadius: radius.md,
     paddingVertical: 16,
     paddingHorizontal: spacing.lg,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    ...shadows.glow,
+    ...themeShadows.glow,
   } as ViewStyle,
   primaryButtonText: {
-    color: '#0B0B0B',
+    color: palette.onPrimary,
     fontSize: fontSize.lg,
     fontWeight: '700' as const,
     letterSpacing: 0.3,
   } as TextStyle,
   secondaryButton: {
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: palette.surfaceLight,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: palette.border,
     paddingVertical: 14,
     paddingHorizontal: spacing.lg,
     alignItems: 'center' as const,
   } as ViewStyle,
-};
+});
+
+export const sharedStyles = createSharedStyles(darkColors, shadows);
